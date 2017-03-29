@@ -1,0 +1,14 @@
+{
+	"web" : {
+		"protocol": "http",
+		"port": 8080,
+		"httpsKeyFile": null,
+		"httpsCertFile": null,
+		"postBlockLimit": 1e5
+	},
+	"webSockets": true,
+	"permanentTracking": false,
+	"backupInterval": 60,
+	"logFormat": "file",
+	"dataFormat": "file"
+}

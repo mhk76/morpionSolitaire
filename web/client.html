@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html data-ng-app="MorpionSolitaire">
+<head>
+	<meta charset="utf-8"/>
+	<meta content='width=device-width' name='viewport' />
+	<title>Morpion solitaire</title>
+	<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.8/angular.min.js"></script>
+	<script type="text/javascript">
+		var $ = angular.element;  
+	</script>
+	<script type="text/javascript" src="client.js"></script>
+	<script type="text/javascript" src="services.js"></script>
+	<link rel="stylesheet" type="text/css" href="client.css" />
+</head>
+<body data-ng-controller="GameController">
+
+	<h1>Morpion solitaire</h1>
+
+	<div class="main">
+		<div class="button scroll-up">&uarr;</div>
+		<div class="button scroll-left">&larr;</div>
+		<canvas id="board" width="601" height="601"></canvas>
+		<div class="button scroll-right">&rarr;</div>
+		<div class="button scroll-down">&darr;</div>
+	</div>
+
+	<div class="highscore">
+		<h2 data-dic-text="highscore"></h2>
+		<div data-ng-repeat="highscore in highscores">
+			<span class="name" data-ng-bind="highscore.name"></span>
+			<span class="score" data-ng-bind="highscore.scope"></span>
+		</div>
+	</div>
+
+</body>
+</html>

@@ -1,0 +1,24 @@
+{
+	"name": "morpion-solitaire",
+	"version": "0.0.1",
+	"description": "Morpion solitaire game",
+	"main": "server.js",
+	"scripts": {
+		"start": "node server.js" 
+	},
+	"dependencies": {
+		"ws": "latest"
+	},
+	"config": {
+		"webProtocol": "http",
+		"webPort": null,
+		"httpsKeyFile": null,
+		"httpsCertFile": null,
+		"backupInterval": 60,
+		"logFormat": "file",
+		"backupFormat": "file"
+	},
+	"author": "Mikko Karhunen <mikko.karhunen@iki.fi>",
+	"license": "UNLICENSED",
+	"private": true
+}

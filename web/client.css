@@ -1,0 +1,170 @@
+* {
+	font-size: 20px;
+}
+
+html,
+body {
+	margin: 0;
+	padding: 0;
+	color: #666;
+	background: #fffff7;
+	font-family: monospace;
+	zoom: 1;
+}
+
+button,
+.button {
+	display: inline-block;
+	border: 2px solid #800;
+	padding: 0.25rem 0.5rem;
+	background: transparent;
+	text-align: center;
+	font-family: sans-serif;
+}
+button:hover,
+.button:hover {
+	background-color: #eed;
+	cursor: pointer;
+}
+button.disabled,
+.button.disabled,
+button.disabled:hover,
+.button.disabled:hover {
+	background: transparent;
+	cursor: default;
+	opacity: 0.25;
+}
+
+input {
+	width: 100%;
+	border: 1px solid #800;
+	color: inherit;
+	background: inherit;
+}
+input:hover {
+	background-color: #eed;
+}
+
+
+/* */
+body {
+	padding: 1rem;
+}
+
+.main {
+	position: relative;
+	height: calc(611px + 4rem);
+}
+.main canvas {
+    position: absolute;
+    left: calc(2rem + 5px);
+    top: calc(2rem + 5px);
+    border: 1px solid #eef;
+	background: url(grid.png) repeat;
+}
+.main .button {
+    position: absolute;
+	width: 2rem;
+	height: 2rem;
+	padding: 0;
+}
+.main .scroll-up {
+    left: calc(2rem + 4px);
+    width: 601px;
+	line-height: 2rem;
+}
+.main .scroll-left {
+    top: calc(2rem + 4px);
+    height: 601px;
+	line-height: 601px;
+}
+.main .scroll-right {
+	top: calc(2rem + 4px);
+    left: calc(2rem + 609px);
+    height: 601px;
+	line-height: 601px;
+}
+.main .scroll-down {
+	top: calc(2rem + 609px);
+    left: calc(2rem + 4px);
+    width: 601px;
+	line-height: 2rem;
+}
+
+
+/* dialog */
+.dialogMask {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: #004;
+	opacity: 0.5;
+}
+.dialogMask.level1 {
+	background: #400;
+}
+.dialogMask.level2 {
+	background: #020;
+}
+
+.dialog {
+	position: fixed;
+	top: 10%;
+	left: calc(50% - 22rem);
+	width: 40rem;
+	border: 1px solid #eee;
+	padding: 1rem 2rem;
+	background: #000;
+}
+.dialog.level1 {
+	top: calc(10% + 2rem);
+	left: calc(50% - 27rem);
+	width: 50rem;
+}
+.dialog.level2 {
+	top: calc(10% + 3rem);
+	left: calc(50% - 20rem);
+	width: 30rem;
+}
+.dialog > .message {
+	font-size: 115%;
+	font-variant: small-caps;
+}
+.dialog span {
+	display: block;
+	margin: 0.5rem 0;
+}
+.dialog span.box {
+	max-height: 15rem;
+	padding: 0.1rem 0.2rem;
+	border-top: 1px solid #888;
+	border-left: 1px solid #888;
+	border-bottom: 1px solid #888;
+	overflow-y: scroll;
+}
+.dialog span.indent {
+	display: inline-block;
+	width: 1rem;
+	margin: 0;
+	text-align: center;
+}
+.dialog span.info {
+	font-size: 90%;
+}
+.dialog span.inline {
+	display: inline-block;
+}
+.dialog span.inline + span.inline {
+	margin-left: 0.5rem;
+}
+.dialog div {
+	margin-top: 0.5rem;
+	border-top: 1px solid #eee;
+	padding-top: 0.5rem;
+	text-align: right;
+}
+.dialog div button {
+	margin-left: 0.2rem;
+}
