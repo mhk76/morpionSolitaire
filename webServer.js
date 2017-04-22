@@ -31,7 +31,7 @@ module.exports = function(serverManager)
 		server = https.createServer(
 			{
 				key: fs.readFileSync(serverManager.config.web.httpsKeyFile),
-				cert: fs.readFileSync(serverManager.config.we.httpsCertFile)
+				cert: fs.readFileSync(serverManager.config.web.httpsCertFile)
 			},
 			HttpListener
 		);
@@ -74,7 +74,7 @@ module.exports = function(serverManager)
 				try
 				{
 					var url = path.parse(request.url);
-					var file = './web' + (url.dir === '/' ? '/' : url.dir + '/') + (url.base || 'client.html');
+					var file = serverManager.config.web.root + url.dir.appendTrail('/') + (url.base || serverManager.config.web.defaultFile);
 
 					fs.access(file, fs.R_OK, function(err)
 					{

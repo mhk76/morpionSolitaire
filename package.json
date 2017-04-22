@@ -9,15 +9,6 @@
 	"dependencies": {
 		"ws": "latest"
 	},
-	"config": {
-		"webProtocol": "http",
-		"webPort": null,
-		"httpsKeyFile": null,
-		"httpsCertFile": null,
-		"backupInterval": 60,
-		"logFormat": "file",
-		"backupFormat": "file"
-	},
 	"author": "Mikko Karhunen <mikko.karhunen@iki.fi>",
 	"license": "UNLICENSED",
 	"private": true
