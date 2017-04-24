@@ -34,14 +34,14 @@ module.exports = function(serverManager)
 							connection: {
 								remoteAddress: webSocket && webSocket._socket && webSocket._socket.remoteAddress
 							},
-							response: function(response)
+							response: function(data, status)
 							{
 								webSocket.send(JSON.stringify({
 									requestId: request.requestId,									
 									userId: request.userId,
 									permanentTracking: serverManager.config.permanentTracking || false,
-									status: response.status,
-									data: response.data
+									status: status || 'ok',
+									data: data
 								}));
 							},
 							terminate: function()

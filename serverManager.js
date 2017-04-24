@@ -182,6 +182,22 @@ module.exports = function(config)
 		}
 	};
 
+	_this.restartApp = function(subModules)
+	{
+		if (subModules)
+		{
+			subModules.forEach(
+				function(module)
+				{
+					delete require.cache[require.resolve(module)];
+				}
+			);
+		}
+		delete require.cache[require.resolve(_this.config.appFile)];
+
+		_app = require(_this.config.appFile);
+	};
+
 	var webServer = require('./webServer.js');
 
 	_this.webServer = new webServer(_this);

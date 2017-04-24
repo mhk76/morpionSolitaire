@@ -137,8 +137,6 @@ function Listener(request)
 			})
 			userData.placeDot = false;
 
-			response = 'ok';
-
 			break;
 		}
 		case 'line':
@@ -191,8 +189,6 @@ function Listener(request)
 				iy += __line[direction].y;
 			}
 
-			response = 'ok';
-
 			break;
 
 			function check(x, y, direction, reverse, first, last)
@@ -238,10 +234,7 @@ function Listener(request)
 
 	_serverManager.cache('users', newData);
 
-	return {
-		status: 'ok',
-		data: response
-	};
+	request.response(response, 'ok');
 }
 
 function GetBoard(input)
