@@ -17,12 +17,10 @@ module.exports = function(serverManager)
 {
 	var server;
 	var port;
-	var _listener = function (request)
+	var _listener = function(request)
 		{
 			console.log('default POST listener', request);
-			return {
-				status: 'ok'
-			}
+			request.response({}, 'ok');
 		};
 
 	if (serverManager.config.web.protocol === 'https')
@@ -104,7 +102,7 @@ module.exports = function(serverManager)
 
 				request.on(
 					'data',
-					function (data)
+					function(data)
 					{
 						queryData.push(data);
 						if (queryData.length > serverManager.config.web.postBlockLimit)
@@ -143,11 +141,14 @@ module.exports = function(serverManager)
 						{
 							var outputData = JSON.stringify({
 								userId: request.userId,
-								userTracking: serverManager.config.web.userTracking,
 								status: status || 'ok',
-								data: data || {},
-								buffer: buffer
+								data: data || {}
 							});
+
+							if (Object.keys(buffer).length > 0)
+							{
+								outputData['buffer'] = buffer;
+							}
 
 							appRequest.outputDataLength = outputData.length;
 

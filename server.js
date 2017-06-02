@@ -12,8 +12,7 @@ require('./serverManager.js')({
 		"httpsCertFile": null,
 		"postBlockLimit": 1e5,
 		"webSockets": true,
-		"disablePost": false,
-		"userTracking": 'localStorage'
+		"disablePost": false
 	},
 	"log": {
 		"format": "file",

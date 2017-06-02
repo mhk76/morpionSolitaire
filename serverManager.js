@@ -22,7 +22,6 @@ module.exports = function(config)
 	_this.config.web.port = _this.config.web.port || 80;
 	_this.config.web.postBlockLimit = _this.config.web.postBlockLimit || 1e5;
 	_this.config.web.webSockets = (_this.config.web.webSockets == true);
-	_this.config.web.userTracking = (_this.config.web.userTracking || 'localStorage');
 
 	_this.config.cache = _this.config.cache || {}
 	_this.config.cache.format = _this.config.cache.format || 'file';

@@ -261,7 +261,7 @@ angular.module('Tools', [])
 })
 .service('cookie', function()
 {
-	this.get = function(name)
+	this.read = function(name)
 	{
 		var cookies = document.cookie.split('; ');
 		var match = escape(name) + '=';
@@ -275,7 +275,7 @@ angular.module('Tools', [])
 		}
 	};
 
-	this.set = function(name, value, maxAge)
+	this.write = function(name, value, maxAge)
 	{
 		document.cookie = escape(name) + '=' + escape(value) + (maxAge ? '; max-age=' + parseInt(maxAge): '');
 	}
@@ -311,16 +311,21 @@ angular.module('Tools', [])
 			action: action
 		};
 
-		var userId = cookie.get('userId');
+		var userId;
 
+		if (localStorage && localStorage.getItem)
+		{
+			userId = localStorage.userId;
+		}
+		else
+		{
+			userId = cookie.read('userId');
+		}
 		if (userId)
 		{
 			message.userId = userId;
 		}
-		else if (localStorage.userId)
-		{
-			message.userId = localStorage.userId;
-		}
+
 		if (parameters)
 		{
 			message.parameters = parameters;
@@ -345,13 +350,13 @@ angular.module('Tools', [])
 
 				_buffer = angular.extend(_buffer, responseData.buffer);
 
-				if (responseData.userTracking === 'cookie')
+				if (localStorage && localStorage.setItem)
 				{
-					cookie.set('userId', responseData.userId);
+					localStorage.setItem('userId', responseData.userId);
 				}
 				else
 				{
-					localStorage.setItem('userId', responseData.userId);
+					cookie.write('userId', responseData.userId);
 				}
 
 				deferred.resolve(responseData.data);
@@ -377,7 +382,7 @@ angular.module('Tools', [])
 
 	if (!_service.supported)
 	{
-		_loader.reject();
+		_loader.resolve();
 		return;
 	}
 
@@ -385,13 +390,24 @@ angular.module('Tools', [])
 	var _requests = {};
 	var _listeners = {};
 	var _buffer = {};
+	var _protocol = (location.protocol === 'https' ? 'wss://' : 'ws://');
 
 	function connect()
 	{
-		_webSocket = new WebSocket('ws://' + window.location.host);
+		_webSocket = new WebSocket(protocol + location.host);
 	}
 
-	connect();
+	// Catch if server does not support WebSockets
+	try
+	{
+		connect();
+	}
+	catch (err)
+	{
+		_service.supported = false;
+		_loader.resolve();
+		return;
+	}
 
 	_webSocket.onmessage = function(messageEvent)
 	{
@@ -409,13 +425,13 @@ angular.module('Tools', [])
 
 			_buffer = angular.extend(_buffer, response.buffer);
 
-			if (response.userTracking === 'cookie')
+			if (localStorage && localStorage.setItem)
 			{
-				cookie.set('userId', response.userId);
+				localStorage.setItem('userId', responseData.userId);
 			}
 			else
 			{
-				localStorage.setItem('userId', response.userId);
+				cookie.write('userId', responseData.userId);
 			}
 
 			for (var key in _listeners)
@@ -480,16 +496,21 @@ angular.module('Tools', [])
 			action: action
 		};
 
-		var userId = cookie.get('userId');
+		var userId;
 
+		if (localStorage && localStorage.getItem)
+		{
+			userId = localStorage.userId;
+		}
+		else
+		{
+			userId = cookie.read('userId');
+		}
 		if (userId)
 		{
 			message.userId = userId;
 		}
-		else if (localStorage.userId)
-		{
-			message.userId = localStorage.userId;
-		}
+
 		if (parameters)
 		{
 			message.parameters = parameters;
@@ -507,7 +528,68 @@ angular.module('Tools', [])
 		}
 
 		return deferred.promise;
-	};	
+	};
+})
+.service('serverComm', function($q, http, webSocket)
+{
+	var _service = this;
+	var _loader = $q.defer();
+	var _serverComm;
+
+	_service.loader = _loader.promise;
+
+	$q.all([
+		http.loader,
+		webSocket.loader
+	]).then(function()
+	{
+		_loader.resolve();
+
+		if (webSocket.supported)
+		{
+			_service.fetch = webSocket.fetch;
+		}
+		else
+		{
+			_service.fetch = http.fetch;
+		}
+	});
+
+	_service.readStore = function(name)
+	{
+		if (localStorage && localStorage.getItem)
+		{
+			return localStorage[name];
+		}
+		else
+		{
+			return JSON.parse(cookie.read(name));
+		}
+	};
+
+	_service.writeStore = function(name, data)
+	{
+		if (localStorage && localStorage.setItem)
+		{
+			localStorage.setItem(name, item);
+		}
+		else
+		{
+			cookie.write(name, JSON.stringify(item));
+		}
+	};
+
+	_service.deleteStore = function(name)
+	{
+		if (localStorage && localStorage.setItem)
+		{
+			delete localStorage[name];
+		}
+		else
+		{
+			cookie.delte(name);
+		}
+	};
 })
 .directive('unselectable', function()
 {

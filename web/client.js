@@ -1,7 +1,7 @@
 'use strict';
 
 angular.module('MorpionSolitaire', ['Tools'])
-.controller('GameController', function($scope, $q, dictionary, showDialog, webSocket, http)
+.controller('GameController', function($scope, $q, dictionary, showDialog, serverComm)
 {
 	const __boardSize = 40;
 	const __gridSize = 20;
@@ -39,8 +39,6 @@ angular.module('MorpionSolitaire', ['Tools'])
 	Math.Tan16th = Math.tan(Math.PI / 8);
 	Math.TanThree16th = Math.tan(3 * Math.PI / 8)
 
-	var comm;
-
 	for (var i = 0; i < $scope.data.grid.length; i++)
 	{
 		$scope.data.grid[i] = new Array(40);
@@ -48,23 +46,13 @@ angular.module('MorpionSolitaire', ['Tools'])
 
 	$q.all([
 		dictionary.loader,
-		http.loader,
-		webSocket.loader
+		serverComm.loader
 	]).then(function()
 	{
-/*		if (webSocket.supported)
-		{
-			comm = webSocket;
-		}
-		else*/
-		{
-			comm = http;
-		}
-
-		comm.fetch('init').then(function(data)
+		serverComm.fetch('init').then(function(data)
 		{
 			angular.extend($scope.data, data);
-console.log($scope.data, data)
+
 			for (var i = 0; i < $scope.data.list.length; i++)
 			{
 				var item = $scope.data.list[i];

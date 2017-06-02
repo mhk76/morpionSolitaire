@@ -3,12 +3,10 @@ var ws = require('ws');
 module.exports = function(serverManager)
 {
 	var _webSockets = {};
-	var _listener = function (request)
+	var _listener = function(request)
 		{
 			console.log('default webSocket listener', request);
-			request.response({
-				status: 'ok'
-			});
+			request.response({}, 'ok');
 		};
 
 	(new ws.Server({ server: serverManager.webServer }))
@@ -48,11 +46,14 @@ module.exports = function(serverManager)
 								var outputData = JSON.stringify({
 									requestId: appRequest.requestId,									
 									userId: appRequest.userId,
-									userTracking: serverManager.config.web.userTracking,
 									status: status || 'ok',
-									data: data || 'ok',
-									buffer: buffer
+									data: data || 'ok'
 								});
+
+								if (Object.keys(buffer).length > 0)
+								{
+									outputData['buffer'] = buffer;
+								}
 
 								appRequest.outputDataLength = outputData.length;
 
@@ -143,7 +144,6 @@ module.exports = function(serverManager)
 					_webSockets[userId].send(JSON.stringify({
 						requestId: dataType,
 						userId: userId,
-						userTracking: serverManager.config.web.userTracking,
 						status: 'broadcast',
 						data: data
 					}));
