@@ -64,7 +64,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 		comm.fetch('init').then(function(data)
 		{
 			angular.extend($scope.data, data);
-
+console.log($scope.data, data)
 			for (var i = 0; i < $scope.data.list.length; i++)
 			{
 				var item = $scope.data.list[i];

@@ -334,7 +334,7 @@ angular.module('Tools', [])
 		.then(
 			function(response)
 			{
-				var responseData = JSON.parse(response.data);
+				var responseData = response.data;
 
 				if (responseData.status === 'error') 
 				{
@@ -356,7 +356,7 @@ angular.module('Tools', [])
 
 				deferred.resolve(responseData.data);
 			},
-			function(response)
+			function(response, r)
 			{
 				showDialog(response.statusText);
 				deferred.reject();

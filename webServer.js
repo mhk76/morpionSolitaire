@@ -6,7 +6,7 @@ var path = require('path');
 const _mime = {
 	'.html': 'text/html',
 	'.css': 'text/css',
-	'.json': 'text/json',
+	'.json': 'application/json',
 	'.js': 'text/javascript',
 	'.png': 'image/png',
 	'.jpg': 'image/jpeg',
@@ -119,13 +119,14 @@ module.exports = function(serverManager)
 				);
 
 				request.on('end', function() {
-					var json = JSON.stringify(queryData.join(''));
+					var inputData = queryData.join('');
+					var json = JSON.stringify(inputData);
 					var buffer = {};
 					var appRequest = {
 						userId: json.userId,
 						action: json.action,
 						parameters: json.parameters,
-						inputDataLength: queryData.length,
+						inputDataLength: inputData.length,
 						connection:
 						{
 							remoteAddress: request.connection.remoteAddress
@@ -148,18 +149,20 @@ module.exports = function(serverManager)
 								buffer: buffer
 							});
 
-							response.write(outputData);
 							appRequest.outputDataLength = outputData.length;
 
-							serverManager.writeLog(serverManager.config.web.protocol, 200, appRequest, startTime);
-							response.writeHead(200, { 'Content-Type': 'text/json' });
+							response.writeHead(200, { 'Content-Type': 'application/json' });
+							response.write(outputData);
 							response.end();
+
+							serverManager.writeLog(serverManager.config.web.protocol, 200, appRequest, startTime);
 						},
 						terminate: function()
 						{							
-							serverManager.writeLog(serverManager.config.web.protocol, 400, appRequest, startTime);
 							response.writeHead(400);
 							response.end();
+
+							serverManager.writeLog(serverManager.config.web.protocol, 400, appRequest, startTime);
 						}
 					};
 

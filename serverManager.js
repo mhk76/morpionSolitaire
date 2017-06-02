@@ -166,11 +166,11 @@ module.exports = function(config)
 
 		if (request.inputDataLength)
 		{
-			data['inputDataLength'] = request.inputDataLength;
+			data['input'] = request.inputDataLength;
 		}
 		if (request.outputDataLength)
 		{
-			data['outputDataLength'] = request.outputDataLength;
+			data['output'] = request.outputDataLength;
 		}
 
 		if (_this.config.log.format === 'mongodb')
