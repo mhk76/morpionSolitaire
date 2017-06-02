@@ -17,10 +17,9 @@ module.exports = function(serverManager)
 {
 	var server;
 	var port;
-	var _modeListeners = {};
-	var _defaultListener = function (request)
+	var _listener = function (request)
 		{
-			console.log('post', request);
+			console.log('default POST listener', request);
 			return {
 				status: 'ok'
 			}
@@ -47,18 +46,14 @@ module.exports = function(serverManager)
 		port,
 		function()
 		{
-			serverManager.writeLog(serverManager.config.web.protocol, 'starting', {});
+			serverManager.writeLog(serverManager.config.web.protocol, 'starting');
 			console.log('WebServer - listening to port ' + port);
 		}
 	);
 
-	server.setDefaultListener = function(callback)
+	server.setListener = function(callback)
 	{
-		_defaultListener = callback;
-	};
-	server.addModeListener = function(mode, callback)
-	{
-		_modeListeners[mode] = callback;
+		_listener = callback;
 	};
 
 	return server;
@@ -103,7 +98,7 @@ module.exports = function(serverManager)
 					response.end();
 				}
 			}
-			else if (request.method === 'POST')
+			else if (request.method === 'POST' && !serverManager.config.web.disablePost)
 			{
 				var queryData = [];
 
@@ -115,6 +110,7 @@ module.exports = function(serverManager)
 						if (queryData.length > serverManager.config.web.postBlockLimit)
 						{
 							queryData = "";
+							serverManager.writeLog(serverManager.config.web.protocol, 404, request, startTime, err);
 							response.writeHead(413);
 							response.end();
 							request.connection.destroy();
@@ -124,52 +120,53 @@ module.exports = function(serverManager)
 
 				request.on('end', function() {
 					var json = JSON.stringify(queryData.join(''));
-					var requestData = {
-						requestId: json.requestId,
+					var buffer = {};
+					var appRequest = {
 						userId: json.userId,
 						action: json.action,
-						mode: json.mode,
-						data: json.data,
-						connection: {
+						parameters: json.parameters,
+						inputDataLength: queryData.length,
+						connection:
+						{
 							remoteAddress: request.connection.remoteAddress
 						},
-						response: function(response)
+						buffer: function(action, parameters, response, isPermanent)
 						{
-							response.write(JSON.stringify({
-								requestId: request.requestId,									
+							buffer[action] = {
+								parameters: parameters || {},
+								response: response || {},
+								isPermanent: isPermanent || false
+							};
+						},
+						response: function(data, status)
+						{
+							var outputData = JSON.stringify({
 								userId: request.userId,
-								permanentTracking: serverManager.config.permanentTracking || false,
-								status: response.status,
-								data: response.data
-							}));
-							serverManager.writeLog(serverManager.config.web.protocol, 200, requestData, startTime, err);
+								userTracking: serverManager.config.web.userTracking,
+								status: status || 'ok',
+								data: data || {},
+								buffer: buffer
+							});
+
+							response.write(outputData);
+							appRequest.outputDataLength = outputData.length;
+
+							serverManager.writeLog(serverManager.config.web.protocol, 200, appRequest, startTime);
 							response.writeHead(200, { 'Content-Type': 'text/json' });
 							response.end();
 						},
 						terminate: function()
-						{
-							serverManager.writeLog(serverManager.config.web.protocol, 400, requestData, startTime, err);
+						{							
+							serverManager.writeLog(serverManager.config.web.protocol, 400, appRequest, startTime);
 							response.writeHead(400);
 							response.end();
 						}
 					};
 
-					if (requestData.mode)
+					setTimeout(function()
 					{
-						if (!_modeListeners[requestData.mode])
-						{
-							serverManager.writeLog(serverManager.config.web.protocol, 400, requestData, startTime, err);
-							response.writeHead(400);
-							response.end();
-							return;
-						}
-						
-						_modeListeners[requestData.mode](requestData);
-					}
-					else
-					{
-						_defaultListener(requestData);
-					}
+						_listener(appRequest);
+					});
 				});
 			}
 			else

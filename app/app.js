@@ -1,3 +1,5 @@
+'use strict';
+
 var _serverManager;
 
 const __defaultBoard =
@@ -41,14 +43,14 @@ exports.init = function(serverManager)
 		  + 'QSQS8RRQM9SRSR4SSSS1RSRS1TSTS4QUQU1TPUO8RURU4SVSV0MXMX2UPNS9VPVP4TQUP8TRTN9RTKV6UQVP8IUIU1'
 	};
 
-	defaultHighScore.moves = getMoves(defaultHighScore.id.toLowerCase()) 
+	defaultHighScore.moves = parseMoves(defaultHighScore.id.toLowerCase()) 
 
 	_serverManager = serverManager;
-	_serverManager.webSocket.setDefaultListener(Listener);
+	_serverManager.setListener(Listener);
 	_serverManager.initCache('users', {});
 	_serverManager.initCache('highScore', [defaultHighScore]);
 
-	function getMoves(str)
+	function parseMoves(str)
 	{
 		var moves = [];
 
@@ -110,13 +112,13 @@ function Listener(request)
 		}
 		case 'dot':
 		{
-			if (!userData.placeDot || !request.data)
+			if (!userData.placeDot || !request.parameters)
 			{
 				return null;				
 			}
 
-			var x = parseInt(request.data.x);
-			var y = parseInt(request.data.y);
+			var x = parseInt(request.parameters.x);
+			var y = parseInt(request.parameters.y);
 
 			if (x < 0 || x >= __boardSize || y < 0 || y >= __boardSize)
 			{
@@ -141,14 +143,14 @@ function Listener(request)
 		}
 		case 'line':
 		{
-			if (userData.placeDot || !request.data)
+			if (userData.placeDot || !request.parameters)
 			{
 				return null;				
 			}
 
-			var x = parseInt(request.data.x);
-			var y = parseInt(request.data.y);
-			var direction = parseInt(request.data.direction);
+			var x = parseInt(request.parameters.x);
+			var y = parseInt(request.parameters.y);
+			var direction = parseInt(request.parameters.direction);
 
 			if (x < 0 || x >= __boardSize || y < 0 || y >= __boardSize || direction < 0 || direction > 7)
 			{

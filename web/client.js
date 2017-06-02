@@ -1,5 +1,7 @@
+'use strict';
+
 angular.module('MorpionSolitaire', ['Tools'])
-.controller('GameController', function($scope, $q, dictionary, showDialog, webSocket)
+.controller('GameController', function($scope, $q, dictionary, showDialog, webSocket, http)
 {
 	const __boardSize = 40;
 	const __gridSize = 20;
@@ -37,14 +39,29 @@ angular.module('MorpionSolitaire', ['Tools'])
 	Math.Tan16th = Math.tan(Math.PI / 8);
 	Math.TanThree16th = Math.tan(3 * Math.PI / 8)
 
+	var comm;
+
 	for (var i = 0; i < $scope.data.grid.length; i++)
 	{
 		$scope.data.grid[i] = new Array(40);
 	}
 
-	$q.all([dictionary.loader, webSocket.loader]).then(function()
+	$q.all([
+		dictionary.loader,
+		http.loader,
+		webSocket.loader
+	]).then(function()
 	{
-		webSocket.getData('get').then(function(data)
+/*		if (webSocket.supported)
+		{
+			comm = webSocket;
+		}
+		else*/
+		{
+			comm = http;
+		}
+
+		comm.fetch('init').then(function(data)
 		{
 			angular.extend($scope.data, data);
 
@@ -65,7 +82,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 	_canvas.fillStyle = '#000';
 	_canvas.lineWidth = 2;	
 
-	$board = $(board)
+	var $board = $(board)
 		.on('mousemove', function(event) {
 			$scope.data.cursorX = event.offsetX;
 			$scope.data.cursorY = event.offsetY;
@@ -176,53 +193,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 
 				if (x === $scope.data.selectionX && y === $scope.data.selectionY)
 				{
-					if ($scope.data.placeDot && item == null)
-					{
-						board.style.cursor = 'pointer';
-						_canvas.beginPath();
-						_canvas.arc(dx, dy, 7, 0, Math.TAU);
-						_canvas.fill();
-					}
-					else
-					{
-						board.style.cursor = 'default';
-					}
-					if (!$scope.data.placeDot)
-					{
-						if ($scope.data.drawLine)
-						{
-							board.style.cursor = 'pointer';
-							_canvas.beginPath();
-							_canvas.lineWidth = 3;
-							_canvas.moveTo($scope.data.lineX * __gridSize, $scope.data.lineY * __gridSize);
-							_canvas.lineTo(($scope.data.lineX + line.x * __lineLength) * __gridSize, ($scope.data.lineY + line.y * __lineLength) * __gridSize);
-							if (line.ok)
-							{
-								_canvas.strokeStyle = '#0c0';
-							}
-							else
-							{
-								_canvas.strokeStyle = '#c00';
-							}
-							_canvas.stroke();
-						}
-						else if (item != null)
-						{
-							board.style.cursor = 'pointer';
-							_canvas.beginPath();
-							_canvas.moveTo(dx - 10, dy - 10);
-							_canvas.lineTo(dx + 10, dy + 10);
-							_canvas.moveTo(dx - 10, dy + 10);
-							_canvas.lineTo(dx + 10, dy - 10);
-							_canvas.moveTo(dx - 10, dy);
-							_canvas.lineTo(dx + 10, dy);
-							_canvas.moveTo(dx, dy - 10);
-							_canvas.lineTo(dx, dy + 10);
-							_canvas.strokeStyle = '#000';
-							_canvas.lineWidth = 3;
-							_canvas.stroke();
-						}
-					}
+					drawItem(dx, dy, item);
 				}
 				else
 				{
@@ -239,6 +210,64 @@ angular.module('MorpionSolitaire', ['Tools'])
 
 			++by;
 			dy += __gridSize;
+		}
+
+		function drawItem(dx, dy, item)
+		{
+			if ($scope.data.placeDot && item == null)
+			{
+				board.style.cursor = 'pointer';
+				_canvas.beginPath();
+				_canvas.arc(dx, dy, 7, 0, Math.TAU);
+				_canvas.fill();
+			}
+			else
+			{
+				board.style.cursor = 'default';
+			}
+			if (!$scope.data.placeDot)
+			{
+				if ($scope.data.drawLine)
+				{
+					board.style.cursor = 'pointer';
+					_canvas.beginPath();
+					_canvas.lineWidth = 3;
+					_canvas.moveTo(
+						$scope.data.lineX * __gridSize,
+						$scope.data.lineY * __gridSize
+					);
+					_canvas.lineTo(
+						($scope.data.lineX + line.x * __lineLength) * __gridSize,
+						($scope.data.lineY + line.y * __lineLength) * __gridSize
+					);
+					if (line.ok)
+					{
+						_canvas.strokeStyle = '#0c0';
+					}
+					else
+					{
+						_canvas.strokeStyle = '#c00';
+					}
+					_canvas.stroke();
+				}
+				else if (item != null)
+				{
+					board.style.cursor = 'pointer';
+					_canvas.beginPath();
+					_canvas.moveTo(dx - 10, dy - 10);
+					_canvas.lineTo(dx + 10, dy + 10);
+					_canvas.moveTo(dx - 10, dy + 10);
+					_canvas.lineTo(dx + 10, dy - 10);
+					_canvas.moveTo(dx - 10, dy);
+					_canvas.lineTo(dx + 10, dy);
+					_canvas.moveTo(dx, dy - 10);
+					_canvas.lineTo(dx, dy + 10);
+					_canvas.strokeStyle = '#000';
+					_canvas.lineWidth = 3;
+					_canvas.stroke();
+				}
+			}
+			
 		}
 
 		function defaultDot(dx, dy, item)

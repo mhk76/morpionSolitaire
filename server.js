@@ -1,4 +1,8 @@
 require('./serverManager.js')({
+	"app": {
+		"file": "./app/app.js",
+		"watchModules": true
+	},
 	"web" : {
 		"root": "./web/",
 		"defaultFile": "client.html",
@@ -6,11 +10,11 @@ require('./serverManager.js')({
 		"port": 8080,
 		"httpsKeyFile": null,
 		"httpsCertFile": null,
-		"postBlockLimit": 1e5
+		"postBlockLimit": 1e5,
+		"webSockets": true,
+		"disablePost": false,
+		"userTracking": 'localStorage'
 	},
-	"webSockets": true,
-	"permanentTracking": false,
-	"appFile": "./app/app.js",
 	"log": {
 		"format": "file",
 		"path": "./log/"

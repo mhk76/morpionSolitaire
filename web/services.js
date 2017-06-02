@@ -1,26 +1,26 @@
 angular.module('Tools', [])
 .service('dictionary', function($q, $http)
 {
+	var _service = this;
 	var _dictionary = {};
-	var _this = this;
 	var _loader = $q.defer();
 
-	_this.lang = "en";
+	_service.lang = null;
 
-	_this.get = function(term, index)
+	_service.get = function(term, index)
 	{
 		if (index === undefined)
 		{
-			return (_dictionary[_this.lang] && _dictionary[_this.lang][term]) || term;
+			return (_dictionary[_service.lang] && _dictionary[_service.lang][term]) || term;
 		}
-		if (_dictionary[_this.lang] && _dictionary[_this.lang][term])
+		if (_dictionary[_service.lang] && _dictionary[_service.lang][term])
 		{
-			return _dictionary[_this.lang][term][index] || (term + index);
+			return _dictionary[_service.lang][term][index] || (term + index);
 		}
 		return term + index;
 	};
 
-	_this.getLanguages = function()
+	_service.getLanguages = function()
 	{
 		var list = {};
 		var count = 0;
@@ -38,13 +38,33 @@ angular.module('Tools', [])
 		return {};
 	};
 
-	_this.loader = _loader.promise;
+	_service.loader = _loader.promise;
 	
 	$http.get('dictionary.json')
 		.then(
 			function(response)
 			{
 				_dictionary = response.data;
+
+				for (var lang in window.navigator.languages)
+				{
+					if (_dictionary[lang])
+					{
+						_service.lang = lang;
+						break;
+					}
+					if (lang.length === 5 && _dictionary[lang.substr(0, 2)])
+					{
+						_service.lang = lang.substr(0, 2);
+						break;
+					}
+				}
+
+				if (_service.lang === null)
+				{
+					_service.lang = Object.keys(_dictionary)[0];
+				}
+
 				_loader.resolve();
 			},
 			function(response)
@@ -63,7 +83,7 @@ angular.module('Tools', [])
 	{
 		++_dialogIndex;
 
-		var _this = this;
+		var _service = this;
 
 		document.body.style.overflow = 'hidden';
 
@@ -239,29 +259,147 @@ angular.module('Tools', [])
 		}
 	};
 })
-.service('webSocket', function($q, showDialog)
+.service('cookie', function()
 {
-	if (!WebSocket)
+	this.get = function(name)
 	{
+		var cookies = document.cookie.split('; ');
+		var match = escape(name) + '=';
+
+		for (var cookie in cookies)
+		{
+			if (cookie.substr(0, match.length) === match)
+			{
+				return unescape(cookie.substr(match.length));
+			}
+		}
+	};
+
+	this.set = function(name, value, maxAge)
+	{
+		document.cookie = escape(name) + '=' + escape(value) + (maxAge ? '; max-age=' + parseInt(maxAge): '');
+	}
+
+	this.delete = function(name)
+	{
+		document.cookie = escape(name) + '=; max-age=-1';
+	}
+})
+.service('http', function($http, $q, cookie, showDialog)
+{
+	var _service = this;
+	var _buffer = {};
+
+	_service.fetch = function(action, parameters)
+	{
+		if (_buffer[action] && angular.equals(parameters, _buffer[action].parameters))
+		{
+			var deferred = $q.defer();
+
+			deferred.resolve(_buffer[action].response);
+
+			if (!_buffer[action].isPermanent)
+			{
+				delete _buffer[action];
+			}
+			
+			return deferred.promise;
+		}
+
+		var deferred = $q.defer();
+		var message = {
+			action: action
+		};
+
+		var userId = cookie.get('userId');
+
+		if (userId)
+		{
+			message.userId = userId;
+		}
+		else if (localStorage.userId)
+		{
+			message.userId = localStorage.userId;
+		}
+		if (parameters)
+		{
+			message.parameters = parameters;
+		}
+
+		$http({
+			method: 'POST',
+			url: '/',
+			data: message			
+		})
+		.then(
+			function(response)
+			{
+				var responseData = JSON.parse(response.data);
+
+				if (responseData.status === 'error') 
+				{
+					showDialog(responseData.data);
+					deferred.reject();
+					return;
+				}
+
+				_buffer = angular.extend(_buffer, responseData.buffer);
+
+				if (responseData.userTracking === 'cookie')
+				{
+					cookie.set('userId', responseData.userId);
+				}
+				else
+				{
+					localStorage.setItem('userId', responseData.userId);
+				}
+
+				deferred.resolve(responseData.data);
+			},
+			function(response)
+			{
+				showDialog(response.statusText);
+				deferred.reject();
+			}
+		);
+
+		return deferred.promise;
+	};
+})
+.service('webSocket', function($q, cookie, showDialog)
+{
+	var _service = this;
+	var _loader = $q.defer();
+
+	_service.loader = _loader.promise;
+	_service.onconnect = null;
+	_service.supported = !!WebSocket;
+
+	if (!_service.supported)
+	{
+		_loader.reject();
 		return;
 	}
 
-	this.ok = true;
+	var _webSocket;
+	var _requests = {};
+	var _listeners = {};
+	var _buffer = {};
 
-	var _this = this;
-	var _webSocket = new WebSocket('ws://' + window.location.host);
-	var _request = {};
-	var _loader = $q.defer();
-	var _listeners = {}; 
+	function connect()
+	{
+		_webSocket = new WebSocket('ws://' + window.location.host);
+	}
 
-	_this.loader = _loader.promise;
+	connect();
 
 	_webSocket.onmessage = function(messageEvent)
 	{
 		try
 		{
 			var response = JSON.parse(messageEvent.data);
-console.log(response)
+			var deferred = _requests[response.requestId];
+
 			if (response.status === 'error') 
 			{
 				showDialog(response.data);
@@ -269,7 +407,16 @@ console.log(response)
 				return;
 			}
 
-			localStorage.setItem('userId', response.userId)
+			_buffer = angular.extend(_buffer, response.buffer);
+
+			if (response.userTracking === 'cookie')
+			{
+				cookie.set('userId', response.userId);
+			}
+			else
+			{
+				localStorage.setItem('userId', response.userId);
+			}
 
 			for (var key in _listeners)
 			{
@@ -279,8 +426,6 @@ console.log(response)
 					return;
 				}
 			}
-
-			var deferred = _request[response.requestId];
 
 			deferred.resolve(response.data);
 		}
@@ -293,35 +438,64 @@ console.log(response)
 
 	_webSocket.onopen = function()
 	{
+		if (_service.onconnect)
+		{
+			_service.onconnect(true);
+		}
 		_loader.resolve();
 	}
 
 	_webSocket.onclose = function()
 	{
-		showDialog('websocket-closed');
+		if (_service.onconnect)
+		{
+			_service.onconnect(false);
+		}
+		connect();
 	}
 
-	_this.addListener = function(key, callback)
+	_service.addListener = function(key, callback)
 	{
 		_listeners[key] = callback;
 	};
 
-	_this.getData = function(action, data)
+	_service.fetch = function(action, parameters)
 	{
+		if (_buffer[action] && angular.equals(parameters, _buffer[action].parameters))
+		{
+			var deferred = $q.defer();
+
+			deferred.resolve(_buffer[action].response);
+
+			if (!_buffer[action].isPermanent)
+			{
+				delete _buffer[action];
+			}
+			
+			return deferred.promise;
+		}
+
 		var message = {
 			requestId: Math.random().toString().substr(2),
 			action: action
 		};
-		if (localStorage.userId)
+
+		var userId = cookie.get('userId');
+
+		if (userId)
+		{
+			message.userId = userId;
+		}
+		else if (localStorage.userId)
 		{
 			message.userId = localStorage.userId;
 		}
-		if (data)
+		if (parameters)
 		{
-			message.data = data;
+			message.parameters = parameters;
 		}
 			
-		var deferred = _request[message.requestId] = $q.defer();		
+		var deferred = _requests[message.requestId] = $q.defer();		
 
 		if (_webSocket.readyState === 1)
 		{

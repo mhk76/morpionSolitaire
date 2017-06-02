@@ -11,9 +11,9 @@ module.exports = function(config)
 
 	_this.config = config || {};
 
-	_this.config.webSockets = (_this.config.webSockets == true);
-	_this.config.permanentTracking = (_this.config.permanentTracking == true);
-	_this.config.appFile = _this.config.appFile || './app/app.js';
+	_this.config.app = _this.config.app || {};
+	_this.config.app.file = _this.config.app.file || './app/app.js';
+	_this.config.app.watchModules = (_this.config.app.watchModules == true);
 
 	_this.config.web = _this.config.web || {};
 	_this.config.web.root = (_this.config.web.root || './web/').appendTrail('/');
@@ -21,6 +21,8 @@ module.exports = function(config)
 	_this.config.web.protocol = _this.config.web.protocol || 'http';
 	_this.config.web.port = _this.config.web.port || 80;
 	_this.config.web.postBlockLimit = _this.config.web.postBlockLimit || 1e5;
+	_this.config.web.webSockets = (_this.config.web.webSockets == true);
+	_this.config.web.userTracking = (_this.config.web.userTracking || 'localStorage');
 
 	_this.config.cache = _this.config.cache || {}
 	_this.config.cache.format = _this.config.cache.format || 'file';
@@ -31,7 +33,7 @@ module.exports = function(config)
 	_this.config.log.format = _this.config.log.format || 'file';
 	_this.config.log.path = (_this.config.log.path || './log/').appendTrail('/');
 
-	var _app = require(_this.config.appFile);
+	var _app = require(_this.config.app.file);
 
 	if (_this.config.log.format === 'mongodb' || _this.config.cache.format === 'mongodb')
 	{
@@ -138,6 +140,7 @@ module.exports = function(config)
 	_this.writeLog = function(protocol, status, request, startTime, err)
 	{
 		startTime = startTime || new Date().getTime();
+		request = request || {};
 
 		var data = {
 			protocol: protocol,
@@ -146,7 +149,7 @@ module.exports = function(config)
 		};
 		if (request.action)
 		{
-			data['url'] = (request.mode ? request.mode + '/' : '') + request.action;
+			data['url'] = request.action;
 		}
 		else if (request.url)
 		{
@@ -159,6 +162,15 @@ module.exports = function(config)
 		if (err)
 		{
 			data['error'] = err;
+		}
+
+		if (request.inputDataLength)
+		{
+			data['inputDataLength'] = request.inputDataLength;
+		}
+		if (request.outputDataLength)
+		{
+			data['outputDataLength'] = request.outputDataLength;
 		}
 
 		if (_this.config.log.format === 'mongodb')
@@ -182,38 +194,75 @@ module.exports = function(config)
 		}
 	};
 
-	_this.restartApp = function(subModules)
+	_this.restartApp = function()
 	{
-		if (subModules)
+		console.log('Recycling modules...');
+		if (_app.subModules)
 		{
-			subModules.forEach(
+			_app.subModules.forEach(
 				function(module)
 				{
 					delete require.cache[require.resolve(module)];
 				}
 			);
 		}
-		delete require.cache[require.resolve(_this.config.appFile)];
+		delete require.cache[require.resolve(_this.config.app.file)];
 
-		_app = require(_this.config.appFile);
+		_app = require(_this.config.app.file);
+		_app.init(_this);
 	};
+
+	_this.setListener = function(callback)
+	{
+		_this.webServer.setListener(callback);
+		if (_this.webSocket)
+		{
+			_this.webSocket.setListener(callback);
+		}
+	}
+
+
+	if (_this.config.watchModules)
+	{
+		var restartTimer = null;
+		var modules = [_this.config.app.file];
+
+		if (_app.subModules)
+		{
+			modules = modules.concat(_app.subModules);
+		}
+
+		modules.forEach(function(item) {
+			fs.watch(item, { persistent: true }, function()
+			{
+				if (restartTimer === null)
+				{
+					clearTimeout(restartTimer);
+				}
+				restartTimer = setTimeout(
+					function()
+					{
+						_this.restartApp();
+						restartTimer = null;
+					},
+					100
+				);
+			});
+		});
+	}
+
 
 	var webServer = require('./webServer.js');
 
 	_this.webServer = new webServer(_this);
 
-	if (_this.config.webSockets)
+	if (_this.config.web.webSockets)
 	{
 		var webSocket = require('./webSocket.js');
+
 		_this.webSocket = new webSocket(_this);
-		_this.setDefaultListener = _this.webSocket.setDefaultListener;
-		_this.addModeListener = _this.webSocket.addModeListener;
 	}
-	else
-	{
-		_this.setDefaultListener = webServer.setDefaultListener;
-		_this.addModeListener = webServer.addModeListener;
-	}
+	
 
 	_app.init(_this);
 
