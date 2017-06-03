@@ -47,7 +47,7 @@ module.exports = function(serverManager)
 									requestId: appRequest.requestId,									
 									userId: appRequest.userId,
 									status: status || 'ok',
-									data: data || 'ok'
+									data: data || {}
 								});
 
 								if (Object.keys(buffer).length > 0)

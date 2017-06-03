@@ -559,7 +559,7 @@ angular.module('Tools', [])
 	{
 		if (localStorage && localStorage.getItem)
 		{
-			return localStorage[name];
+			return JSON.parse(localStorage[name]);
 		}
 		else
 		{
@@ -571,7 +571,7 @@ angular.module('Tools', [])
 	{
 		if (localStorage && localStorage.setItem)
 		{
-			localStorage.setItem(name, item);
+			localStorage.setItem(name, JSON.stringify(item));
 		}
 		else
 		{
@@ -581,7 +581,7 @@ angular.module('Tools', [])
 
 	_service.deleteStore = function(name)
 	{
-		if (localStorage && localStorage.setItem)
+		if (localStorage)
 		{
 			delete localStorage[name];
 		}
