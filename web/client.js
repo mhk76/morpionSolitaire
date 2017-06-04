@@ -70,7 +70,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 	_canvas.fillStyle = '#000';
 	_canvas.lineWidth = 2;	
 
-	var $board = $(board)
+	$(board)
 		.on('mousemove', function(event) {
 			$scope.data.cursorX = event.offsetX;
 			$scope.data.cursorY = event.offsetY;
@@ -81,7 +81,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 		})
 		.on('mousedown', function(event)
 		{
-			if (!$scope.data.placeDot && !$scope.data.drawLine && !$scope.data.drawLineStart)
+			if (event.button === 0 && !$scope.data.placeDot && !$scope.data.drawLine && !$scope.data.drawLineStart)
 			{
 				var x = parseInt(event.offsetX / __gridSize + 0.5);
 				var y = parseInt(event.offsetY / __gridSize + 0.5);
@@ -95,10 +95,27 @@ angular.module('MorpionSolitaire', ['Tools'])
 
 					drawGrid();
 				}
+
+				return;
 			}
+			else if (event.button === 2 && !$scope.data.placeDot)
+			{
+				$scope.data.drawLine = false;
+				$scope.data.drawLineStart = false;
+				drawGrid();
+				return;
+			}
+
+			event.preventDefault();
+			return false;
 		})
 		.on('mouseup', function(event)
 		{
+			if (event.button !== 0)
+			{
+				event.preventDefault();
+				return false;
+			}
 			if ($scope.data.placeDot)
 			{
 				var x = parseInt(event.offsetX / __gridSize + 0.5) + $scope.data.left;
@@ -109,7 +126,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 					var item = {
 						x: x,
 						y: y,
-						line: [false, false, false, false, false, false, false, false],
+						line: [0, 0, 0, 0, 0, 0, 0, 0],
 						ordinal: ++$scope.data.ordinal
 					}
 					$scope.data.grid[y][x] = item; 
@@ -131,17 +148,17 @@ angular.module('MorpionSolitaire', ['Tools'])
 					var ix = $scope.data.left + $scope.data.lineX;
 					var iy = $scope.data.top + $scope.data.lineY;
 
-					$scope.data.undo.push({ dot: false, x: ix, y: iy, dx: line.direction, dy: line.reverse });
+					$scope.data.undo.push({ x: ix, y: iy, dx: line.direction, dy: line.reverse });
 
 					for (var i = 0; i <= __lineLength; i++)
 					{
 						if (i < __lineLength)
 						{
-							$scope.data.grid[iy][ix].line[line.direction] = true;
+							$scope.data.grid[iy][ix].line[line.direction] = 1;
 						}
 						if (i > 0)
 						{
-							$scope.data.grid[iy][ix].line[line.reverse] = true;
+							$scope.data.grid[iy][ix].line[line.reverse] = 1;
 						}
 
 						ix += line.x;
@@ -163,7 +180,6 @@ angular.module('MorpionSolitaire', ['Tools'])
 		var by = $scope.data.top;
 		var dy = 0;
 		var line = { x: 0, y: 0, ok: false };
-		var lineOk = false;
 
 		if ($scope.data.drawLine)
 		{
@@ -181,7 +197,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 
 				if (x === $scope.data.selectionX && y === $scope.data.selectionY)
 				{
-					drawItem(dx, dy, item);
+					drawItem(dx, dy, item, line);
 				}
 				else
 				{
@@ -200,7 +216,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 			dy += __gridSize;
 		}
 
-		function drawItem(dx, dy, item)
+		function drawItem(dx, dy, item, line)
 		{
 			if ($scope.data.placeDot && item == null)
 			{
@@ -230,7 +246,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 					);
 					if (line.ok)
 					{
-						_canvas.strokeStyle = '#0c0';
+						_canvas.strokeStyle = '#0a0';
 					}
 					else
 					{
@@ -238,7 +254,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 					}
 					_canvas.stroke();
 				}
-				else if (item != null)
+				else
 				{
 					board.style.cursor = 'pointer';
 					_canvas.beginPath();
@@ -250,7 +266,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 					_canvas.lineTo(dx + 10, dy);
 					_canvas.moveTo(dx, dy - 10);
 					_canvas.lineTo(dx, dy + 10);
-					_canvas.strokeStyle = '#000';
+					_canvas.strokeStyle = (item != null ? '#0a0' : '#c00');
 					_canvas.lineWidth = 3;
 					_canvas.stroke();
 				}
@@ -270,7 +286,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 			{
 				var ordinal = item.ordinal.toString();		
 				_canvas.fillText(ordinal, dx - parseInt(_canvas.measureText(ordinal).width / 2), dy + 3);
-			} // if (ordinal)
+			}
 
 			_canvas.beginPath();
 			_canvas.lineWidth = 3;
@@ -316,13 +332,14 @@ angular.module('MorpionSolitaire', ['Tools'])
 				_canvas.lineTo(dx - __gridSize / 2, dy - __gridSize / 2);
 			}
 			_canvas.stroke();
-		} // function defaultDot
-	}
+		} // function defaultDot()
+
+	} // function drawGrid()
 
 	function checkLine()
 	{
-		var dx = $scope.data.selectionX - $scope.data.lineX * __gridSize; 
-		var dy = $scope.data.selectionY - $scope.data.lineY * __gridSize;
+		var dx = ($scope.data.selectionX - $scope.data.lineX) * __gridSize; 
+		var dy = ($scope.data.selectionY - $scope.data.lineY) * __gridSize;
 		var tan = (dx !== 0 ? dy / dx : dy);
 		var output = { x: 0, y: 0, direction: 0, reverse: 0, ok: false };
 
@@ -346,7 +363,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 			else if (tan > -Math.TanThree16th)
 			{
 				output.direction = __dirDownLeft;
-				d1 = __dirUpRight
+				output.reverse = __dirUpRight
 			}
 			else
 			{
@@ -420,6 +437,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 			}
 			return false;
 		}
-	}
+
+	} // function checkLine()
 
 });

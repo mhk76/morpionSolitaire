@@ -135,7 +135,7 @@ function Listener(request)
 				x: x,
 				y: y,
 				ordinal: ++userData.ordinal,
-				line: [false, false, false, false, false, false, false, false]
+				line: [0, 0, 0, 0, 0, 0, 0, 0]
 			})
 			userData.placeDot = false;
 
@@ -265,7 +265,7 @@ function GetBoard(input)
 				output.list.push({
 					x: x,
 					y: y,
-					line: [false, false, false, false, false, false, false, false]
+					line: [0, 0, 0, 0, 0, 0, 0, 0]
 				});
 			}
 			++x;
