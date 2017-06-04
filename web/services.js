@@ -548,10 +548,12 @@ angular.module('Tools', [])
 		if (webSocket.supported)
 		{
 			_service.fetch = webSocket.fetch;
+			_service.usingWebSocket = true;
 		}
 		else
 		{
 			_service.fetch = http.fetch;
+			_service.usingWebSocket = false;
 		}
 	});
 

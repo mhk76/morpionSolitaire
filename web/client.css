@@ -53,42 +53,20 @@ body {
 
 .main {
 	position: relative;
-	height: calc(611px + 4rem);
+	height: calc(601px + 1rem);
 }
 .main canvas {
     position: absolute;
-    left: calc(2rem + 5px);
-    top: calc(2rem + 5px);
-    border: 1px solid #eef;
+    border: 1px solid #000;
 	background: url(grid.png) repeat;
+	background-position-x: 10px;
+	background-position-y: 10px;
 }
 .main .button {
     position: absolute;
 	width: 2rem;
 	height: 2rem;
 	padding: 0;
-}
-.main .scroll-up {
-    left: calc(2rem + 4px);
-    width: 601px;
-	line-height: 2rem;
-}
-.main .scroll-left {
-    top: calc(2rem + 4px);
-    height: 601px;
-	line-height: 601px;
-}
-.main .scroll-right {
-	top: calc(2rem + 4px);
-    left: calc(2rem + 609px);
-    height: 601px;
-	line-height: 601px;
-}
-.main .scroll-down {
-	top: calc(2rem + 609px);
-    left: calc(2rem + 4px);
-    width: 601px;
-	line-height: 2rem;
 }
 
 

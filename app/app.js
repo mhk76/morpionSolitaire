@@ -23,7 +23,7 @@ const __line = [
 	 { x: 0, y: 1, reverse: 1 },
 	 { x: 1, y: 1, reverse: 0 }
 ];
-const __boardSize = 40;
+const __boardSize = 30;
 const __lineLength = 4;
 const __moveChar = '0123456789abcdefghijklmnopqrstuvwxyz#-!%'.split('');
 
@@ -43,11 +43,10 @@ exports.init = function(serverManager)
 		  + 'QSQS8RRQM9SRSR4SSSS1RSRS1TSTS4QUQU1TPUO8RURU4SVSV0MXMX2UPNS9VPVP4TQUP8TRTN9RTKV6UQVP8IUIU1'
 	};
 
-	defaultHighScore.moves = parseMoves(defaultHighScore.id.toLowerCase()) 
+	defaultHighScore.moves = parseMoves(defaultHighScore.id.toLowerCase());
 
 	_serverManager = serverManager;
 	_serverManager.setListener(Listener);
-	_serverManager.initCache('users', {});
 	_serverManager.initCache('highScore', [defaultHighScore]);
 
 	function parseMoves(str)
@@ -58,8 +57,8 @@ exports.init = function(serverManager)
 		{
 			moves.push({
 				dot: true,
-				x: __moveChar.indexOf(str.charAt(i)) + 10,
-				y: __moveChar.indexOf(str.charAt(i + 1)) + 10
+				x: __moveChar.indexOf(str.charAt(i)),
+				y: __moveChar.indexOf(str.charAt(i + 1))
 			});
 
 			var direction = __moveChar.indexOf(str.charAt(i + 4));
@@ -75,8 +74,8 @@ exports.init = function(serverManager)
 
 			moves.push({
 				dot: false,
-				x: __moveChar.indexOf(str.charAt(i + 2)) + 10,
-				y: __moveChar.indexOf(str.charAt(i + 3)) + 10,
+				x: __moveChar.indexOf(str.charAt(i + 2)),
+				y: __moveChar.indexOf(str.charAt(i + 3)),
 				direction: direction
 			});
 		}
@@ -87,159 +86,127 @@ exports.init = function(serverManager)
 
 function Listener(request)
 {
-	var userData = _serverManager.cache('users')[request.userId];
 	var response = {};
-
-	if (!userData)
-	{
-		userData = {
-			board: GetBoard(__defaultBoard),
-			ordinal: 0,
-			placeDot: true
-		};
-	}
 
 	switch (request.action)
 	{
-		case 'new':
+		case 'submit':
 		{
-			userData = {
-				board: GetBoard(__defaultBoard),
-				ordinal: 0,
-				placeDot: true
-			};
-			break;
-		}
-		case 'dot':
-		{
-			if (!userData.placeDot || !request.parameters)
-			{
-				return null;				
-			}
-
-			var x = parseInt(request.parameters.x);
-			var y = parseInt(request.parameters.y);
-
-			if (x < 0 || x >= __boardSize || y < 0 || y >= __boardSize)
-			{
-				return null;
-			}
-			if (userData.board.grid[y][x] != null)
-			{
-				return null;
-			}
-
-			userData.board.moves.push({ dot: true, x: x, y: y });
-			userData.board.grid[y][x] = userData.board.list.length; 
-			userData.board.list.push({
-				x: x,
-				y: y,
-				ordinal: ++userData.ordinal,
-				line: [0, 0, 0, 0, 0, 0, 0, 0]
-			})
-			userData.placeDot = false;
-
-			break;
-		}
-		case 'line':
-		{
-			if (userData.placeDot || !request.parameters)
-			{
-				return null;				
-			}
-
-			var x = parseInt(request.parameters.x);
-			var y = parseInt(request.parameters.y);
-			var direction = parseInt(request.parameters.direction);
-
-			if (x < 0 || x >= __boardSize || y < 0 || y >= __boardSize || direction < 0 || direction > 7)
-			{
-				return null;
-			}
-
-			var ix = x;
-			var iy = y;
-
-			for (var i = 0; i <= __lineLength; i++)
-			{
-				if (check(ix, iy, direction, __line[direction].reverse, i === 0, i === __lineLength))
-				{
-					return null;
-				}
-
-				ix += __line[direction].x;
-				iy += __line[direction].y;
-			}
-
-			userData.board.moves.push({ dot: false, x: x, y: y, direction: direction });
-
-			ix = x;
-			iy = y;
-
-			for (var i = 0; i <= __lineLength; i++)
-			{
-				if (i < __lineLength)
-				{
-					userData.board.grid[iy][ix].line[direction] = true;
-				}
-				if (i > 0)
-				{
-					userData.board.grid[iy][ix].line[__line[direction].reverse] = true;
-				}
-
-				ix += __line[direction].x;
-				iy += __line[direction].y;
-			}
-
-			break;
-
-			function check(x, y, direction, reverse, first, last)
-			{
-				if (userData.board.grid[y][x] == null)
-				{
-					return true;
-				}
-				if (!last && userData.board.grid[y][x].line[direction])
-				{
-					return true;
-				}
-				if (!first && userData.board.grid[y][x].line[reverse])
-				{
-					return true;
-				}
-				return false;
-			}
-		}
-		case 'done':
-		{
-			_serverManager.cache('highScore')
 			break;
 		}
 		default:
 		{
 			response = {
-				list: userData.board.list,
-				ordinal: userData.ordinal,
-				placeDot: userData.placeDot,
-				highScore: []				
+				list: parseBoard(__defaultBoard).list,
+				highScore: _serverManager.cache('highScore')
 			};
-
-			var highScore = _serverManager.cache('highScore');
-
 			break;
 		}
 	}
 
-	var newData = {};
-
-	newData[request.userId] = userData;
-
-	_serverManager.cache('users', newData);
-
 	request.response(response, 'ok');
 }
 
-function GetBoard(input)
+function checkDot()
+{
+	if (!userData.placeDot || !request.parameters)
+	{
+		return null;				
+	}
+
+	var x = parseInt(request.parameters.x);
+	var y = parseInt(request.parameters.y);
+
+	if (x < 0 || x >= __boardSize || y < 0 || y >= __boardSize)
+	{
+		return null;
+	}
+	if (userData.board.grid[y][x] != null)
+	{
+		return null;
+	}
+
+	userData.board.moves.push({ dot: true, x: x, y: y });
+	userData.board.grid[y][x] = userData.board.list.length; 
+	userData.board.list.push({
+		x: x,
+		y: y,
+		ordinal: ++userData.ordinal,
+		line: [0, 0, 0, 0, 0, 0, 0, 0]
+	})
+	userData.placeDot = false;
+}
+
+function checkLine()
+{
+	if (userData.placeDot || !request.parameters)
+	{
+		return null;				
+	}
+
+	var x = parseInt(request.parameters.x);
+	var y = parseInt(request.parameters.y);
+	var direction = parseInt(request.parameters.direction);
+
+	if (x < 0 || x >= __boardSize || y < 0 || y >= __boardSize || direction < 0 || direction > 7)
+	{
+		return null;
+	}
+
+	var ix = x;
+	var iy = y;
+
+	for (var i = 0; i <= __lineLength; i++)
+	{
+		if (check(ix, iy, direction, __line[direction].reverse, i === 0, i === __lineLength))
+		{
+			return null;
+		}
+
+		ix += __line[direction].x;
+		iy += __line[direction].y;
+	}
+
+	userData.board.moves.push({ dot: false, x: x, y: y, direction: direction });
+
+	ix = x;
+	iy = y;
+
+	for (var i = 0; i <= __lineLength; i++)
+	{
+		if (i < __lineLength)
+		{
+			userData.board.grid[iy][ix].line[direction] = true;
+		}
+		if (i > 0)
+		{
+			userData.board.grid[iy][ix].line[__line[direction].reverse] = true;
+		}
+
+		ix += __line[direction].x;
+		iy += __line[direction].y;
+	}
+
+	function check(x, y, direction, reverse, first, last)
+	{
+		if (userData.board.grid[y][x] == null)
+		{
+			return true;
+		}
+		if (!last && userData.board.grid[y][x].line[direction])
+		{
+			return true;
+		}
+		if (!first && userData.board.grid[y][x].line[reverse])
+		{
+			return true;
+		}
+		return false;
+	}
+}
+
+
+function parseBoard(input)
 {
 	var lines = input.split('|');
 	var output = {
@@ -248,12 +215,12 @@ function GetBoard(input)
 		moves: [],
 		moveString: ''
 	};
-	var y = parseInt(lines.length / 2 + 0.5) - lines.length + __boardSize / 2;
+	var y = __boardSize / 2 - parseInt(lines.length / 2 + 0.5);
 
 	for (var i = 0; i < lines.length; i++)
 	{
 		var chars = lines[i].split('');
-		var x = parseInt(chars.length / 2 + 0.5) - chars.length + __boardSize / 2;
+		var x = __boardSize / 2 - parseInt(chars.length / 2 + 0.5);
 
 		output.grid[y] = new Array(__boardSize);
 

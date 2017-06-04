@@ -38,7 +38,7 @@ module.exports = function(serverManager)
 								buffer[action] = {
 									parameters: parameters || {},
 									response: response || {},
-									isPermanent: isPermanent ||false
+									isPermanent: isPermanent || false
 								};
 							},
 							response: function(data, status)
