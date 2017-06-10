@@ -20,6 +20,11 @@
 		<canvas id="board" width="601" height="601" oncontextmenu="return false;" data-unselectable></canvas>
 	</div>
 
+	<div class="tools">
+		<span data-dic-text="lines"></span>: {{ data.lineCount }}
+		<button data-ng-click="finish()" data-ng-disabled="data.placeDot" data-dic-text="finish"></button>
+	</div>
+
 	<div class="highscore">
 		<h2 data-dic-text="highscore"></h2>
 		<div data-ng-repeat="highscore in highscores">

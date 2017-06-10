@@ -1,7 +1,7 @@
 'use strict';
 
 angular.module('MorpionSolitaire', ['Tools'])
-.controller('GameController', function($scope, $q, dictionary, showDialog, serverComm)
+.controller('GameController', function($scope, $q, $timeout, dictionary, dialog, serverComm)
 {
 	const __boardSize = 30;
 	const __gridSize = 20;
@@ -29,12 +29,15 @@ angular.module('MorpionSolitaire', ['Tools'])
 	];
 
 	$scope.data = {
-		grid: new Array(__boardSize),
+		grid: new Array(__boardSize),		
+		placeDot: true,
+		ordinal: 0,
+		lineCount: 0,
 		drawLine: false,
 		drawLineStart: false,
 		selectionX: null,
 		selectionY: null,
-		undo: []
+		moves: []
 	};
 
 	Math.TAU = 2 * Math.PI;
@@ -71,6 +74,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 	_canvas.font = '8px Arial'
 	_canvas.fillStyle = '#000';
 	_canvas.lineWidth = 2;	
+
 
 	$(board)
 		.on('mousemove', function(event) {
@@ -137,12 +141,15 @@ angular.module('MorpionSolitaire', ['Tools'])
 					$scope.data.grid[$scope.data.selectionY][$scope.data.selectionX] = item; 
 					$scope.data.list.push(item);
 
-					$scope.data.placeDot = false;
+					$timeout(function()
+					{
+						$scope.data.placeDot = false;
+					});
 					$scope.data.drawLine = false;
 					$scope.data.drawLineStart = true;
 
-					$scope.data.undo.push({
-						dot: true,
+					$scope.data.moves.push({
+						dot: 1,
 						x: $scope.data.selectionX,
 						y: $scope.data.selectionY
 					});
@@ -162,10 +169,11 @@ angular.module('MorpionSolitaire', ['Tools'])
 					var ix = $scope.data.lineX;
 					var iy = $scope.data.lineY;
 
-					$scope.data.undo.push({
+					$scope.data.moves.push({
 						x: ix,
 						y: iy,
-					direction: line.direction });
+						dir: line.direction
+					});
 
 					for (var i = 0; i <= __lineLength; i++)
 					{
@@ -184,12 +192,42 @@ angular.module('MorpionSolitaire', ['Tools'])
 
 					$scope.data.drawLine = false;
 					$scope.data.drawLineStart = false;
-					$scope.data.placeDot = true;
+
+					$timeout(function()
+					{
+						$scope.data.placeDot = true;
+						++$scope.data.lineCount;
+					});
 				}
 			}
 
 			drawGrid();
 		});
+
+
+	$scope.finish = function()
+	{
+		dialog.input(
+			'enter-your-name',
+			function(name)
+			{
+				if (name.length === 0)
+				{
+					return true;
+				}
+
+				serverComm.fetch(
+					'submit',
+					{
+						board: 0,
+						dots: 5,
+						moves: $scope.data.moves,
+						name: name
+					}
+				);
+			}
+		);
+	};
 
 
 	function drawGrid()
@@ -364,9 +402,9 @@ angular.module('MorpionSolitaire', ['Tools'])
 
 	function undo()
 	{
-		if ($scope.data.undo.length > 0)
+		if ($scope.data.moves.length > 0)
 		{
-			var undo = $scope.data.undo.pop();
+			var undo = $scope.data.moves.pop();
 
 			if (undo.dot)
 			{
@@ -377,13 +415,13 @@ angular.module('MorpionSolitaire', ['Tools'])
 			}
 			else
 			{
-				var line = __line[undo.direction];
+				var line = __line[undo.dir];
 
 				for (var i = 0; i <= __lineLength; i++)
 				{
 					if (i < __lineLength)
 					{
-						$scope.data.grid[undo.y][undo.x].line[undo.direction] = 0;
+						$scope.data.grid[undo.y][undo.x].line[undo.dir] = 0;
 					}
 					if (i > 0)
 					{

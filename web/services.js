@@ -164,7 +164,7 @@ angular.module('Tools', [])
 							input.bind('change', input.onchange);
 						}
 
-						templateElements[item.name] = input;
+						templateElements[item.name || item.type + i] = input;
 						
 						if (!firstElement)
 						{
@@ -189,7 +189,7 @@ angular.module('Tools', [])
 				var element = $('<button></button>');				
 
 				element.text(dictionary.get(button.text, button.index));
-				element[0].clickEvent = button.click; 
+				element[0].clickEvent = button.onclick; 
 				element.on(
 					"click",
 					function()
@@ -203,9 +203,9 @@ angular.module('Tools', [])
 								if (returnValue.then)
 								{
 									returnValue.then(function()
-										{
-											CloseDialog();
-										});
+									{
+										CloseDialog();
+									});
 								}
 								return;
 							}
@@ -259,6 +259,54 @@ angular.module('Tools', [])
 		}
 	};
 })
+.service('dialog', function(showDialog)
+{
+	this.ok = function(message)
+	{
+		showDialog(message);
+	};
+
+	this.yesNo = function(message, yesCallback, noCallback)
+	{
+		showDialog(
+			message,
+			[
+				{
+					text: 'yes',
+					onclick: yesCallback
+				},
+				{
+					text: 'no',
+					onclick: noCallback
+				}
+			]
+		);
+	};
+
+	this.input = function(message, acceptCallback, cancelCallback)
+	{
+		showDialog(
+			message,
+			[
+				{
+					text: 'ok',
+					onclick: function(items)
+					{
+						return acceptCallback(items['inputText'].val());
+					}
+				},
+				{
+					text: 'cancel',
+					onclick: cancelCallback
+				}
+			],
+			[{
+				type: 'input',
+				name: 'inputText'
+			}]
+		);
+	}
+})
 .service('cookie', function()
 {
 	this.read = function(name)
@@ -275,9 +323,9 @@ angular.module('Tools', [])
 		}
 	};
 
-	this.write = function(name, value, maxAge)
+	this.write = function(name, value)
 	{
-		document.cookie = escape(name) + '=' + escape(value) + (maxAge ? '; max-age=' + parseInt(maxAge): '');
+		document.cookie = escape(name) + '=' + escape(value) + '; max-age=' + (86400 * 365 * 10);
 	}
 
 	this.delete = function(name)
