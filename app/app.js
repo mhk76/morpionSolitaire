@@ -1,8 +1,4 @@
-'use strict';
-
-var _serverManager;
-
-const __defaultBoard =
+const __defaultBoard = parseBoard(
 	  '   oooo   |'
 	+ '   o  o   |'
 	+ '   o  o   |'
@@ -12,7 +8,7 @@ const __defaultBoard =
 	+ 'oooo  oooo|'
 	+ '   o  o   |'
 	+ '   o  o   |'
-	+ '   oooo   ';
+	+ '   oooo   ');
 const __line = [
 	 { x: -1, y: -1, reverse: 7 },
 	 { x: 0, y: -1, reverse: 6 },
@@ -24,12 +20,14 @@ const __line = [
 	 { x: 1, y: 1, reverse: 0 }
 ];
 const __boardSize = 30;
-const __lineLength = 4;
+const __lineMax = 4;
 const __moveChar = '0123456789abcdefghijklmnopqrstuvwxyz#-!%'.split('');
+
+var _serverManager;
 
 exports.init = function(serverManager)
 {
-	var defaultHighScore = {
+	var defaultHighScore = [{
 		name: 'Mikko',
 		date: new Date(2011, 10, 9),
 		moves: [],
@@ -41,13 +39,13 @@ exports.init = function(serverManager)
 		  + 'OTOT0LTOP9MTMT4LUKV2KUKU2KWKW1SOSO0RMRK9PONQ2SMSM4QOQO4PPOQ2RPRP0QQQQ0QPRP4PQPQ1SNSK9TOTO0UOUO4TNUO0'
 		  + 'RQRQ0SQSQ4QRQR0SPTO8NTTN8MUOR2NUNU4LVLV2OUOU0OVOV0NVNV0LWLW1MWMW0MVMW1NWNW0OWOW4OXOX1PTPS8QTQT4PUPU1'
 		  + 'QSQS8RRQM9SRSR4SSSS1RSRS1TSTS4QUQU1TPUO8RURU4SVSV0MXMX2UPNS9VPVP4TQUP8TRTN9RTKV6UQVP8IUIU1'
-	};
+	}];
 
-	defaultHighScore.moves = parseMoves(defaultHighScore.id.toLowerCase());
+	defaultHighScore[0].moves = parseMoves(defaultHighScore[0].id.toLowerCase());
 
 	_serverManager = serverManager;
 	_serverManager.setListener(Listener);
-	_serverManager.initCache('highScore', [defaultHighScore]);
+	_serverManager.initCache('highscores', defaultHighScore);
 
 	function parseMoves(str)
 	{
@@ -92,19 +90,25 @@ function Listener(request)
 	{
 		case 'submit':
 		{
+			checkSubmit(request.parameters);
 			break;
 		}
 		default:
 		{
 			response = {
-				list: parseBoard(__defaultBoard).list,
-				highScore: _serverManager.cache('highScore')
+				list: __defaultBoard.list,
+				highscores: _serverManager.cache('highscores')
 			};
 			break;
 		}
 	}
 
 	request.response(response, 'ok');
+}
+
+function checkSubmit(parameters)
+{
+
 }
 
 function checkDot()
@@ -156,9 +160,9 @@ function checkLine()
 	var ix = x;
 	var iy = y;
 
-	for (var i = 0; i <= __lineLength; i++)
+	for (var i = 0; i <= __lineMax; i++)
 	{
-		if (check(ix, iy, direction, __line[direction].reverse, i === 0, i === __lineLength))
+		if (check(ix, iy, direction, __line[direction].reverse, i === 0, i === __lineMax))
 		{
 			return null;
 		}
@@ -172,9 +176,9 @@ function checkLine()
 	ix = x;
 	iy = y;
 
-	for (var i = 0; i <= __lineLength; i++)
+	for (var i = 0; i <= __lineMax; i++)
 	{
-		if (i < __lineLength)
+		if (i < __lineMax)
 		{
 			userData.board.grid[iy][ix].line[direction] = true;
 		}
