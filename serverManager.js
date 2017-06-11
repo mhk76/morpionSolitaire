@@ -185,7 +185,7 @@ module.exports = function(config)
 			var date = new Date();
 
 			fs.appendFile(
-				_this.config.log.path + date.getFullYear() + '-' + (date.getMonth() + 1).toPadded(2) + '-' + date.getDate().toPadded(2) + '.log',
+				_this.config.log.path + date.getFullYear() + '-' + (date.getMonth() + 1).leftPad(2, '0') + '-' + date.getDate().leftPad(2, '0') + '.log',
 				JSON.stringify(data) + '\n',
 				{ encoding: 'utf8' },
 				function() {}

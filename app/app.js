@@ -1,3 +1,6 @@
+'use strict';
+
+const __boardSize = 30;
 const __defaultBoard = parseBoard(
 	  '   oooo   |'
 	+ '   o  o   |'
@@ -9,6 +12,7 @@ const __defaultBoard = parseBoard(
 	+ '   o  o   |'
 	+ '   o  o   |'
 	+ '   oooo   ');
+const __lineMax = 4;
 const __line = [
 	 { x: -1, y: -1, reverse: 7 },
 	 { x: 0, y: -1, reverse: 6 },
@@ -19,8 +23,6 @@ const __line = [
 	 { x: 0, y: 1, reverse: 1 },
 	 { x: 1, y: 1, reverse: 0 }
 ];
-const __boardSize = 30;
-const __lineMax = 4;
 const __moveChar = '0123456789abcdefghijklmnopqrstuvwxyz#-!%'.split('');
 
 var _serverManager;
@@ -31,6 +33,7 @@ exports.init = function(serverManager)
 		name: 'Mikko',
 		date: new Date(2011, 10, 9),
 		moves: [],
+		lines: 158,
 		id: 'IIGK2KJKJ4LJKJ6JKJK1JLJK9INGLANILGAMKMK1MLMK9LKJIAKMKM4LMKM6GNGN1NGNG4LING8KLIJAKIII6LHLG9OKOK0NLNL0'
 		  + 'IKIK2LNLN0ILII9HLGL6FOFO2KOKO0OHOH8PIPI9NKPI8NHNG9KKNH8KHKG9LLIIAHKHK2FNGK6KNKN0EOEO2HNHN1OIJH6QKQK0'
 		  + 'HOFN6GPGP2GOKK9IOIO4FPFP2KQKQ0LOLO1OLOL4IPKK6HQHQ2IQIQ1GQOI8HPGQ2GRGR1HRHR1ISIS0JRJR0IRFP6JQKQ4KRKR4'
@@ -98,6 +101,15 @@ function Listener(request)
 			response = {
 				list: __defaultBoard.list,
 				highscores: _serverManager.cache('highscores')
+					.map(function(item)
+					{
+						return {
+							name: item.name,
+							date: item.date,
+							lines: item.lines,
+							moves: item.moves
+						};
+					})
 			};
 			break;
 		}

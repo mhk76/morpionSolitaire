@@ -1,4 +1,4 @@
-Number.prototype.toPadded = function(length, padChar)
+Number.prototype.leftPad = function(length, padChar)
 {
 	var output = this.toString();
 
