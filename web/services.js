@@ -1,21 +1,40 @@
+Number.prototype.leftPad = function(length, padChar)
+{
+	var output = this.toString();
+
+	if (output.length < length)
+	{
+		return (padChar || '0').toString().substr(0, 1).repeat(length - output.length) + output;
+	}
+
+	return output.slice(-length);
+};
+
 angular.module('Tools', [])
-.service('dictionary', function($q, $http)
+.service('dictionary', function($q, $http, $rootScope)
 {
 	var _service = this;
 	var _dictionary = {};
 	var _loader = $q.defer();
+	var _lang = null;
 
 	_service.lang = null;
+
+	_service.setLang = function(lang)
+	{
+		_lang = lang;
+		$rootScope.$broadcast('dictionary-setLanguage', lang);
+	}
 
 	_service.get = function(term, index)
 	{
 		if (index === undefined)
 		{
-			return (_dictionary[_service.lang] && _dictionary[_service.lang][term]) || term;
+			return (_dictionary[_lang] && _dictionary[_lang][term]) || term;
 		}
-		if (_dictionary[_service.lang] && _dictionary[_service.lang][term])
+		if (_dictionary[_lang] && _dictionary[_lang][term])
 		{
-			return _dictionary[_service.lang][term][index] || (term + index);
+			return _dictionary[_lang][term][index] || (term + index);
 		}
 		return term + index;
 	};
@@ -23,19 +42,63 @@ angular.module('Tools', [])
 	_service.getLanguages = function()
 	{
 		var list = {};
-		var count = 0;
 
 		for (var lang in _dictionary)
 		{
-			list[lang] = _dictionary[lang]['lang'];
-			++count;
+			list[lang] = _dictionary[lang]['_lang'];
 		}
 
-		if (count > 1)
+		if (Object.keys(list).length > 1)
 		{
 			return list;
 		}
 		return {};
+	};
+
+	_service.formatDate = function(date, format)
+	{
+		var dateStr = _service.get(format || '_date');
+
+		if (dateStr.indexOf('%a') === -1)
+		{
+			dateStr = dateStr.replace('%yyyy', date.getFullYear());
+			dateStr = dateStr.replace('%yy', date.getYear());
+			dateStr = dateStr.replace('%dd', date.getDate().leftPad(2, '0'));
+			dateStr = dateStr.replace('%d', date.getDate());
+			dateStr = dateStr.replace('%mm', date.getMonth().leftPad(2, '0'));
+			dateStr = dateStr.replace('%m', date.getMonth());
+			dateStr = dateStr.replace('%hh', date.getHours().leftPad(2, '0'));
+			dateStr = dateStr.replace('%h', date.getHours());
+			dateStr = dateStr.replace('%nn', date.getMinutes().leftPad(2, '0'));
+			dateStr = dateStr.replace('%n', date.getMinutes());
+		}
+		else
+		{
+			var h = date.getHours();
+
+			dateStr = dateStr.replace('%yyyy', date.getFullYear());
+			dateStr = dateStr.replace('%yy', date.getYear());
+			dateStr = dateStr.replace('%mm', date.getMonth().leftPad(2, '0'));
+			dateStr = dateStr.replace('%m', date.getMonth());
+			dateStr = dateStr.replace('%dd', date.getDate().leftPad(2, '0'));
+			dateStr = dateStr.replace('%d', date.getDate());
+			dateStr = dateStr.replace('%nn', date.getMinutes().leftPad(2, '0'));
+			dateStr = dateStr.replace('%n', date.getMinutes());
+			if (h >= 12)
+			{
+				dateStr = dateStr.replace('%a', 'PM');
+				h = h - 12;
+			}
+			else
+			{
+				dateStr = dateStr.replace('%a', 'AM');
+			}
+			h = (h === 0 ? 12 : h);
+			dateStr = dateStr.replace('%hh', h.leftPad(2, '0'));
+			dateStr = dateStr.replace('%h', h);
+		}
+
+		return dateStr;
 	};
 
 	_service.loader = _loader.promise;
@@ -50,20 +113,22 @@ angular.module('Tools', [])
 				{
 					if (_dictionary[lang])
 					{
-						_service.lang = lang;
+						_lang = lang;
 						break;
 					}
 					if (lang.length === 5 && _dictionary[lang.substr(0, 2)])
 					{
-						_service.lang = lang.substr(0, 2);
+						_lang = lang.substr(0, 2);
 						break;
 					}
 				}
 
-				if (_service.lang === null)
+				if (_lang === null)
 				{
-					_service.lang = Object.keys(_dictionary)[0];
+					_lang = Object.keys(_dictionary)[0];
 				}
+
+				_service.lang = _lang;
 
 				_loader.resolve();
 			},
@@ -153,11 +218,16 @@ angular.module('Tools', [])
 						var input = $('<input/>');
 
 						input.attr('type', item.type === 'input' ? 'text' : item.type);
-						input.attr('placeholder', dictionary.get(item.placeholder));
 						input.attr('maxlength', item.maxlength);
 						input.attr('min', item.min);
 						input.attr('max', item.max);
 						input.attr('step', item.step);
+						input.attr('value', item.default);
+
+						if (item.placeholder)
+						{
+							input.attr('placeholder', dictionary.get(item.placeholder));
+						}
 
 						if (input.onchange)
 						{
@@ -283,7 +353,7 @@ angular.module('Tools', [])
 		);
 	};
 
-	this.input = function(message, acceptCallback, cancelCallback)
+	this.input = function(message, acceptCallback, cancelCallback, defaultText)
 	{
 		showDialog(
 			message,
@@ -302,7 +372,8 @@ angular.module('Tools', [])
 			],
 			[{
 				type: 'input',
-				name: 'inputText'
+				name: 'inputText',
+				default: defaultText
 			}]
 		);
 	}
@@ -333,7 +404,7 @@ angular.module('Tools', [])
 		document.cookie = escape(name) + '=; max-age=-1';
 	}
 })
-.service('http', function($http, $q, cookie, showDialog)
+.service('http', function($http, $q, cookie, dialog)
 {
 	var _service = this;
 	var _buffer = {};
@@ -391,7 +462,7 @@ angular.module('Tools', [])
 
 				if (responseData.status === 'error') 
 				{
-					showDialog(responseData.data);
+					dialog.ok(responseData.data);
 					deferred.reject();
 					return;
 				}
@@ -411,7 +482,7 @@ angular.module('Tools', [])
 			},
 			function(response, r)
 			{
-				showDialog(response.statusText);
+				dialog.ok(response.statusText);
 				deferred.reject();
 			}
 		);
@@ -419,7 +490,7 @@ angular.module('Tools', [])
 		return deferred.promise;
 	};
 })
-.service('webSocket', function($q, cookie, showDialog)
+.service('webSocket', function($q, cookie, dialog)
 {
 	var _service = this;
 	var _loader = $q.defer();
@@ -466,7 +537,7 @@ angular.module('Tools', [])
 
 			if (response.status === 'error') 
 			{
-				showDialog(response.data);
+				dialog.ok(response.data);
 				deferred.reject();
 				return;
 			}
@@ -496,7 +567,7 @@ angular.module('Tools', [])
 		catch (err)
 		{
 			console.log(err);
-			showDialog('unknown-error');
+			dialog.ok('unknown-error');
 		}
 	};
 
@@ -578,29 +649,32 @@ angular.module('Tools', [])
 		return deferred.promise;
 	};
 })
-.service('serverComm', function($q, http, webSocket)
+.service('server', function($q, http, webSocket)
 {
 	var _service = this;
 	var _loader = $q.defer();
-	var _serverComm;
+	var _server;
 
 	_service.loader = _loader.promise;
 
 	$q.all([
 		http.loader,
 		webSocket.loader
-	]).then(function()
+	])
+	.then(function()
 	{
 		_loader.resolve();
 
 		if (webSocket.supported)
 		{
 			_service.fetch = webSocket.fetch;
+			_service.addListener = webSocket.addListener();
 			_service.usingWebSocket = true;
 		}
 		else
 		{
 			_service.fetch = http.fetch;
+			_service.addListener = function() { };
 			_service.usingWebSocket = false;
 		}
 	});
@@ -609,7 +683,7 @@ angular.module('Tools', [])
 	{
 		if (localStorage && localStorage.getItem)
 		{
-			return JSON.parse(localStorage[name]);
+			return localStorage.getItem(name);
 		}
 		else
 		{
@@ -621,23 +695,23 @@ angular.module('Tools', [])
 	{
 		if (localStorage && localStorage.setItem)
 		{
-			localStorage.setItem(name, JSON.stringify(item));
+			localStorage.setItem(name, data);
 		}
 		else
 		{
-			cookie.write(name, JSON.stringify(item));
+			cookie.write(name, JSON.stringify(data));
 		}
 	};
 
 	_service.deleteStore = function(name)
 	{
-		if (localStorage)
+		if (localStorage && localStorage.deleteItem)
 		{
-			delete localStorage[name];
+			delete localStorage.deleteItem(name);
 		}
 		else
 		{
-			cookie.delte(name);
+			cookie.delete(name);
 		}
 	};
 })
@@ -659,12 +733,20 @@ angular.module('Tools', [])
 {
 	return {
 		restrict: 'A',
-		link: function(scope, element, attributes)
+		link: function($scope, element, attributes)
 		{
 			dictionary.loader.then(function()
 			{
 				element.html(dictionary.get(attributes.dicText, attributes.dicIndex));
 			});
+
+			$scope.$on(
+				'dictionary-setLanguage',
+				function()
+				{
+					element.html(dictionary.get(attributes.dicText, attributes.dicIndex));
+				}
+			);
 		}
 	}
 })
@@ -672,12 +754,88 @@ angular.module('Tools', [])
 {
 	return {
 		restrict: 'A',
-		link: function(scope, element, attributes)
+		link: function($scope, element, attributes)
 		{
 			dictionary.loader.then(function()
 			{
 				element.attr('title', dictionary.get(attributes.dicTitle, attributes.dicIndex));
 			});
+
+			$scope.$on(
+				'dictionary-setLanguage',
+				function()
+				{
+					element.attr('title', dictionary.get(attributes.dicText, attributes.dicIndex));
+				}
+			);
 		}
 	}
+})
+.directive('asDate', function()
+{
+    return {
+		require: 'ngModel',
+        restrict : 'A',
+        link: function ($scope, $element, $attributes, $controller)
+		{
+			$controller.$formatters.length = 0;
+			$controller.$parsers.length = 0;
+
+			$controller.$formatters.push(function(d)
+			{
+				var dt = new Date(d);
+				return dt.getFullYear() + '-' + ('00' + (dt.getMonth() + 1)).substr(-2) + '-' + dt.getDate();
+			});
+
+            var release = $scope.$watch(
+				$attributes.ngModel,
+				function (value)
+				{
+					if (value)
+					{
+						$scope.ngModel = new Date(value);
+					}
+				}
+			);
+
+			$scope.$on('$destroy', function()
+			{
+				release();
+			});
+        }
+    }
+})
+.filter('formatDate', function(dictionary)
+{
+	var filter = function(date)
+	{
+		var dt = new Date(date);
+
+		if (dt == 'Invalid date')
+		{
+			return '';
+		}
+		return dictionary.formatDate(dt);
+	};
+
+	filter.$stateful = true;
+
+	return filter;
+})
+.filter('formatDateTime', function(dictionary)
+{
+	var filter = function(date)
+	{
+		var dt = new Date(date);
+
+		if (dt == 'Invalid date')
+		{
+			return '';
+		}
+		return dictionary.formatDate(dt, '_datetime');
+	}
+
+	filter.$stateful = true;
+
+	return filter;
 });

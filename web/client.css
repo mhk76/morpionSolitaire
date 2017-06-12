@@ -12,6 +12,20 @@ body {
 	zoom: 1;
 }
 
+body {
+	padding: 1rem;
+}
+
+h1 {
+	margin-top: 0;
+	margin-left: 0.5rem;
+	font-size: 1.2em;
+}
+
+h2 {
+	margin: 0 0 0.5rem 0;
+}
+
 button,
 .button {
 	display: inline-block;
@@ -46,9 +60,25 @@ input:hover {
 }
 
 
-/* */
-body {
-	padding: 1rem;
+.languages {
+	position: absolute;
+	top: 1rem;
+	right: 1rem;
+	max-width: 15rem;
+}
+.languages span {
+	display: inline-block;
+	color: #00f;
+	margin: 0 0.1rem;
+	border: 1px dotted #888;
+	padding: 0.1rem 0.2rem;
+}
+.languages span:hover {
+	background-color: #eed;
+	cursor: pointer;
+}
+.languages span.selected {
+	border-style: solid;
 }
 
 .main {
@@ -67,6 +97,24 @@ body {
 	width: 2rem;
 	height: 2rem;
 	padding: 0;
+}
+
+.highscore {
+	padding: 0.5rem 0;
+}
+
+table {
+	border-spacing: 0;
+}
+th.name {
+	min-width: 20rem;
+	text-align: left;
+	border-bottom: 1px dotted #666;
+}
+td.lines {
+	min-width: 3rem;
+	text-align: right;
+	border-bottom: 1px dotted #666;
 }
 
 

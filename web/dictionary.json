@@ -1,7 +1,30 @@
 {
 	"en": {
-		"lang": "English",
+		"_lang": "English",
+		"_date": "%m/%d/%yyyy",
+		"_datetime": "%m/%d/%yyyy %h:%nn %a",
+
+		"finish": "Finish",
+		"new-game": "Start new game",
+		"lines": "Lines",
+		"highscore": "Highscore",
+
+		"enter-your-name": "Enter your name",
 
 		"unknown-error": "Unknown error"
+	},
+	"fi": {
+		"_lang": "suomi",
+		"_date": "%d.%m.%yyyy",
+		"_datetime": "%d.%m.%yyyy %h:%nn",
+
+		"finish": "Lopeta",
+		"new-game": "Aloita uusi peli",
+		"lines": "Viivoja",
+		"highscore": "Tulokset",
+
+		"enter-your-name": "Anna nimesi",
+
+		"unknown-error": "Tuntematon virhe"
 	}
 }

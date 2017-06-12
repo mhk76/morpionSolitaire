@@ -1,7 +1,7 @@
 'use strict';
 
 angular.module('MorpionSolitaire', ['Tools'])
-.controller('GameController', function($scope, $q, $timeout, dictionary, dialog, serverComm)
+.controller('GameController', function($scope, $q, $timeout, $window, dictionary, dialog, server)
 {
 	const __boardSize = 30;
 	const __gridSize = 20;
@@ -27,46 +27,64 @@ angular.module('MorpionSolitaire', ['Tools'])
 		{ x: 0, y: 1, reverse: __dirUp },
 		{ x: 1, y: 1, reverse: __dirUpLeft }
 	];
+	const __defaultBoard = parseBoard(
+		  '   oooo   |'
+		+ '   o  o   |'
+		+ '   o  o   |'
+		+ 'oooo  oooo|'
+		+ 'o        o|'
+		+ 'o        o|'
+		+ 'oooo  oooo|'
+		+ '   o  o   |'
+		+ '   o  o   |'
+		+ '   oooo   ');
 
-	$scope.data = {
-		grid: new Array(__boardSize),		
+	$scope.board = __defaultBoard;
+	$scope.data = {		
+		moves: [],
+		highscores: [],
 		placeDot: true,
 		ordinal: 0,
-		lineCount: 0,
 		drawLine: false,
 		drawLineStart: false,
+		done: false,
 		selectionX: null,
-		selectionY: null,
-		moves: []
+		selectionY: null
 	};
 
 	Math.TAU = 2 * Math.PI;
 	Math.Tan16th = Math.tan(Math.PI / 8);
 	Math.TanThree16th = Math.tan(3 * Math.PI / 8)
 
-	for (var i = 0; i < $scope.data.grid.length; i++)
-	{
-		$scope.data.grid[i] = new Array(__boardSize);
-	}
-
 	$q.all([
 		dictionary.loader,
-		serverComm.loader
+		server.loader
 	]).then(function()
 	{
-		serverComm.fetch('init').then(function(data)
+		$scope.data.languageList = dictionary.getLanguages();
+		$scope.data.lang = server.readStore('lang');
+		if ($scope.data.lang)
+		{
+			dictionary.setLang($scope.data.lang);
+		}
+		else
+		{
+			$scope.data.lang = dictionary.lang;
+		}
+
+		server.fetch('init').then(function(data)
 		{
 			angular.extend($scope.data, data);
-
-			for (var i = 0; i < $scope.data.list.length; i++)
-			{
-				var item = $scope.data.list[i];
-				$scope.data.grid[item.y][item.x] = item;
-			}
-
 			drawGrid();
-		})
+		});
 	});
+
+	$window.onbeforeunload =
+		function(e)
+		{
+			return $scope.board.lineCount > 0 ? true : null;
+		};
+
 
 	var board = document.getElementById('board');
 	var _canvas = board.getContext('2d');
@@ -74,7 +92,6 @@ angular.module('MorpionSolitaire', ['Tools'])
 	_canvas.font = '8px Arial'
 	_canvas.fillStyle = '#000';
 	_canvas.lineWidth = 2;	
-
 
 	$(board)
 		.on('mousemove', function(event) {
@@ -91,7 +108,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 			{
 				if (!$scope.data.placeDot && !$scope.data.drawLine && $scope.data.drawLineStart)
 				{
-					if ($scope.data.grid[$scope.data.selectionY][$scope.data.selectionX])
+					if ($scope.board.grid[$scope.data.selectionY][$scope.data.selectionX] != null)
 					{
 						$scope.data.drawLine = true;
 						$scope.data.drawLineStart = true;
@@ -130,7 +147,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 			}
 			if ($scope.data.placeDot)
 			{
-				if ($scope.data.grid[$scope.data.selectionY][$scope.data.selectionX] == null)
+				if ($scope.board.grid[$scope.data.selectionY][$scope.data.selectionX] == null)
 				{
 					var item = {
 						x: $scope.data.selectionX,
@@ -138,8 +155,8 @@ angular.module('MorpionSolitaire', ['Tools'])
 						line: [0, 0, 0, 0, 0, 0, 0, 0],
 						ordinal: ++$scope.data.ordinal
 					}
-					$scope.data.grid[$scope.data.selectionY][$scope.data.selectionX] = item; 
-					$scope.data.list.push(item);
+					$scope.board.grid[$scope.data.selectionY][$scope.data.selectionX] = $scope.board.list.length; 
+					$scope.board.list.push(item);
 
 					$timeout(function()
 					{
@@ -179,11 +196,11 @@ angular.module('MorpionSolitaire', ['Tools'])
 					{
 						if (i < __lineLength)
 						{
-							$scope.data.grid[iy][ix].line[line.direction] = 1;
+							$scope.board.list[$scope.board.grid[iy][ix]].line[line.direction] = 1;
 						}
 						if (i > 0)
 						{
-							$scope.data.grid[iy][ix].line[line.reverse] = 1;
+							$scope.board.list[$scope.board.grid[iy][ix]].line[line.reverse] = 1;
 						}
 
 						ix += line.x;
@@ -196,7 +213,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 					$timeout(function()
 					{
 						$scope.data.placeDot = true;
-						++$scope.data.lineCount;
+						++$scope.board.lineCount;
 					});
 				}
 			}
@@ -211,12 +228,14 @@ angular.module('MorpionSolitaire', ['Tools'])
 			'enter-your-name',
 			function(name)
 			{
-				if (name.length === 0)
+				if (!name)
 				{
+					dialog.ok('enter-your-name');
 					return true;
 				}
 
-				serverComm.fetch(
+				server.writeStore('userName', name);
+				server.fetch(
 					'submit',
 					{
 						board: 0,
@@ -225,16 +244,38 @@ angular.module('MorpionSolitaire', ['Tools'])
 						name: name
 					}
 				);
-			}
+
+				$scope.data.done = true;
+				drawGrid();
+			},
+			server.readStore('userName')
 		);
 	};
+
+	$scope.newGame = function()
+	{
+		$scope.board = __defaultBoard;
+
+		$scope.data.moves = [];
+		$scope.data.placeDot = true;
+		$scope.data.ordinal = 0;
+		$scope.data.drawLine = false;
+		$scope.data.drawLineStart = false;
+		$scope.data.done = false;
+	};
+
+	$scope.setLanguage = function(lang)
+	{
+		dictionary.setLang(lang);
+		server.writeStore('lang', lang);
+		$scope.data.lang = lang;
+	}
 
 
 	function drawGrid()
 	{
 		_canvas.clearRect(0, 0, __canvasSize, __canvasSize);
 
-		var by = 0;
 		var dy = __gridOffset;
 		var line = {
 			x: 0,
@@ -242,23 +283,25 @@ angular.module('MorpionSolitaire', ['Tools'])
 			ok: false
 		};
 
-		if ($scope.data.drawLine)
+		if ($scope.data.drawLine && !$scope.data.done)
 		{
 			line = checkLine();
 		}
 
 		for (var y = 0; y < __boardSize; y++)
 		{
-			var bx = 0;
 			var dx = __gridOffset;
 
 			for (var x = 0; x < __boardSize; x++)
 			{
-				var item = $scope.data.grid[by][bx];
+				var item = $scope.board.list[$scope.board.grid[y][x]];
 
 				if (x === $scope.data.selectionX && y === $scope.data.selectionY)
 				{
-					drawItem(dx, dy, item, line);
+					if (!$scope.data.done)
+					{
+						drawItem(dx, dy, item, line);
+					}
 				}
 				else
 				{
@@ -269,11 +312,9 @@ angular.module('MorpionSolitaire', ['Tools'])
 					defaultDot(dx, dy, item);
 				}
 
-				++bx;
 				dx += __gridSize;
 			}
 
-			++by;
 			dy += __gridSize;
 		}
 
@@ -408,10 +449,10 @@ angular.module('MorpionSolitaire', ['Tools'])
 
 			if (undo.dot)
 			{
-				delete $scope.data.grid[undo.y][undo.x]; 
-				--$scope.data.ordinal;
-				$scope.data.list.pop();
+				$scope.board.grid[undo.y][undo.x] = null;
+				$scope.board.list.pop();
 				$scope.data.placeDot = true;
+				--$scope.data.ordinal;
 			}
 			else
 			{
@@ -421,11 +462,11 @@ angular.module('MorpionSolitaire', ['Tools'])
 				{
 					if (i < __lineLength)
 					{
-						$scope.data.grid[undo.y][undo.x].line[undo.dir] = 0;
+						$scope.board.list[$scope.board.grid[undo.y][undo.x]].line[undo.dir] = 0;
 					}
 					if (i > 0)
 					{
-						$scope.data.grid[undo.y][undo.x].line[line.reverse] = 0;
+						$scope.board.list[$scope.board.grid[undo.y][undo.x]].line[line.reverse] = 0;
 					}
 
 					undo.x += line.x;
@@ -434,19 +475,30 @@ angular.module('MorpionSolitaire', ['Tools'])
 
 				$scope.data.drawLine = false;
 				$scope.data.drawLineStart = true;
-				$scope.data.placeDot = false;				
+				$scope.data.placeDot = false;
+
+				$timeout(function()
+				{
+					--$scope.board.lineCount;
+				});
 			}
 
 			drawGrid();
 		}
-	}
+	} // function undo()
 
 	function checkLine()
 	{
 		var dx = ($scope.data.selectionX - $scope.data.lineX) * __gridSize; 
 		var dy = ($scope.data.selectionY - $scope.data.lineY) * __gridSize;
 		var tan = (dx !== 0 ? dy / dx : dy);
-		var output = { x: 0, y: 0, direction: 0, reverse: 0, ok: false };
+		var output = {
+			x: 0,
+			y: 0,
+			direction: 0,
+			reverse: 0,
+			ok: false
+		};
 
 		if (dx  < 0)
 		{
@@ -528,15 +580,20 @@ angular.module('MorpionSolitaire', ['Tools'])
 
 		function check(x, y, direction, reverse, first, last)
 		{
-			if ($scope.data.grid[y][x] == null)
+			var i = $scope.board.grid[y][x];
+
+			if (i == null)
 			{
 				return true;
 			}
-			if (!last && $scope.data.grid[y][x].line[direction])
+
+			var item = $scope.board.list[i];
+
+			if (!last && item.line[direction])
 			{
 				return true;
 			}
-			if (!first && $scope.data.grid[y][x].line[reverse])
+			if (!first && item.line[reverse])
 			{
 				return true;
 			}
@@ -544,5 +601,44 @@ angular.module('MorpionSolitaire', ['Tools'])
 		}
 
 	} // function checkLine()
+
+	function parseBoard(input)
+	{
+		var lines = input.split('|');
+		var output = {
+			grid: new Array(__boardSize),
+			list: [],
+			lineCount: 0
+		};
+		var y = __boardSize / 2 - parseInt(lines.length / 2 + 0.5);
+
+		for (var i = 0; i < __boardSize; i++)
+		{
+			output.grid[i] = new Array(__boardSize);
+		}
+
+		for (var i = 0; i < lines.length; i++)
+		{
+			var chars = lines[i].split('');
+			var x = __boardSize / 2 - parseInt(chars.length / 2 + 0.5);
+
+			for (var j = 0; j < chars.length; j++)
+			{
+				if (chars[j] != ' ')
+				{
+					output.grid[y][x] = output.list.length;  
+					output.list.push({
+						x: x,
+						y: y,
+						line: [0, 0, 0, 0, 0, 0, 0, 0]
+					});
+				}
+				++x;
+			}
+			++y;
+		}
+
+		return output;
+	} // function parseBoard()
 
 });
