@@ -143,6 +143,16 @@ angular.module('Tools', [])
 	var _dialog = [];
 	var _dialogMask = [];
 	var _dialogIndex = -1;
+	var _hotkeyMap = {};
+	var _hotkeyList = [];
+
+	function onkeypress(event)
+	{
+		if (_hotkeyList.indexOf(event.key) !== -1)
+		{
+			_hotkeyMap[event.key][0].click();
+		}
+	}
 
 	return function(message, buttons, template)
 	{
@@ -183,6 +193,9 @@ angular.module('Tools', [])
 		var dialogButtons = dialog.find('div');
 		var templateElements = {};
 		var firstElement;
+		
+		_hotkeyMap = {};
+		_hotkeyList = [];
 		
 		dialog.find('span').text(messageText);
 		dialogElements.empty();
@@ -229,9 +242,9 @@ angular.module('Tools', [])
 							input.attr('placeholder', dictionary.get(item.placeholder));
 						}
 
-						if (input.onchange)
+						if (item.onchange)
 						{
-							input.bind('change', input.onchange);
+							input.bind('change', item.onchange);
 						}
 
 						templateElements[item.name || item.type + i] = input;
@@ -250,56 +263,67 @@ angular.module('Tools', [])
 			}
 		}
 
-		if (buttons)
+		if (!buttons)
 		{
-			for (var i = 0; i < buttons.length; i++)
-			{
-				var button = buttons[i];
-
-				var element = $('<button></button>');				
-
-				element.text(dictionary.get(button.text, button.index));
-				element[0].clickEvent = button.onclick; 
-				element.on(
-					"click",
-					function()
-					{
-						if (this.clickEvent) 
-						{
-							var returnValue = this.clickEvent(templateElements);
-
-							if (returnValue)
-							{
-								if (returnValue.then)
-								{
-									returnValue.then(function()
-									{
-										CloseDialog();
-									});
-								}
-								return;
-							}
-						}
-						CloseDialog();
-					}
-				);
-
-				dialogButtons.append(element);
-			}
+			buttons.push({
+				text: 'close',
+				default: true,
+				cancel: true
+			});
 		}
-		else
+
+		for (var i = 0; i < buttons.length; i++)
 		{
-			dialogButtons.append(
-				$('<button></button>')
-					.text(dictionary.get('close'))
-					.on(
-						'click',
-						function()
+			var button = buttons[i];
+
+			var element = $('<button></button>');				
+
+			element.text(dictionary.get(button.text, button.index));
+			element[0].clickEvent = button.onclick; 
+			element.on(
+				"click",
+				function()
+				{
+					if (this.clickEvent) 
+					{
+						var returnValue = this.clickEvent(templateElements);
+
+						if (returnValue)
 						{
-							CloseDialog();
+							if (returnValue.then)
+							{
+								returnValue.then(function()
+								{
+									CloseDialog();
+								});
+							}
+							return;
 						}
-					)
+					}
+					CloseDialog();
+				}
 			);
+
+			if (button.default)
+			{
+				_hotkeyMap['Enter'] = element;
+			}
+			if (button.cancel)
+			{
+				_hotkeyMap['Escape'] = element;
+			}
+			if (button.hotkey)
+			{
+				_hotkeyMap[button.hotkey] = element;
+			}
+
+			dialogButtons.append(element);
+		}
+
+		if (Object.keys(_hotkeyMap).length > 0)
+		{
+			_hotkeyList = Object.keys(_hotkeyMap);
+			window.addEventListener('keydown', onkeypress);
 		}
 
 		dialogMask
@@ -312,6 +336,10 @@ angular.module('Tools', [])
 		if (firstElement)
 		{
 			firstElement[0].focus();
+			if (firstElement[0].select)
+			{
+				firstElement[0].select();
+			}
 		}
 
 		return CloseDialog;
@@ -322,6 +350,8 @@ angular.module('Tools', [])
 			_dialogMask[_dialogIndex].toggleClass('ng-hide', true);
 			--_dialogIndex;
 
+			window.removeEventListener('keydown', onkeypress);
+
 			if (_dialogIndex === -1)
 			{
 				document.body.style.overflow = '';
@@ -329,7 +359,7 @@ angular.module('Tools', [])
 		}
 	};
 })
-.service('dialog', function(showDialog)
+.service('dialog', function(showDialog, dictionary)
 {
 	this.ok = function(message)
 	{
@@ -343,10 +373,14 @@ angular.module('Tools', [])
 			[
 				{
 					text: 'yes',
+					hotkey: 'Key' + dictionary.get('yes-key'),
+					default: true,
 					onclick: yesCallback
 				},
 				{
 					text: 'no',
+					hotkey: 'Key' + dictionary.get('no-key'),
+					cancel: true,
 					onclick: noCallback
 				}
 			]
@@ -355,11 +389,21 @@ angular.module('Tools', [])
 
 	this.input = function(message, acceptCallback, cancelCallback, defaultText)
 	{
+		if (cancelCallback && !angular.isFunction(cancelCallback))
+		{
+			if (!defaultText)
+			{
+				defaultText = cancelCallback;
+			}
+			cancelCallback = function() {};
+		}
+
 		showDialog(
 			message,
 			[
 				{
 					text: 'ok',
+					default: true,
 					onclick: function(items)
 					{
 						return acceptCallback(items['inputText'].val());
@@ -367,6 +411,7 @@ angular.module('Tools', [])
 				},
 				{
 					text: 'cancel',
+					cancel: true,
 					onclick: cancelCallback
 				}
 			],

@@ -9,6 +9,15 @@
 		"lines": "Lines",
 		"highscore": "Highscore",
 
+		"ok": "Ok",
+		"cancel": "Cancel",
+		"close": "Close",
+		"yes": "Yes",
+		"no": "No",
+
+		"yes-key": "Y",
+		"No-key": "N",
+
 		"enter-your-name": "Enter your name",
 
 		"unknown-error": "Unknown error"
@@ -22,6 +31,15 @@
 		"new-game": "Aloita uusi peli",
 		"lines": "Viivoja",
 		"highscore": "Tulokset",
+
+		"ok": "Ok",
+		"cancel": "Peruuta",
+		"close": "Sulje",
+		"yes": "Kyllä",
+		"no": "Ei",
+
+		"yes-key": "K",
+		"No-key": "E",
 
 		"enter-your-name": "Anna nimesi",
 
