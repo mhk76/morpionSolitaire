@@ -39,7 +39,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 		+ '   o  o   |'
 		+ '   oooo   ');
 
-	$scope.board = __defaultBoard;
+	$scope.board = angular.copy(__defaultBoard);
 	$scope.data = {		
 		moves: [],
 		highscores: [],
@@ -254,7 +254,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 
 	$scope.newGame = function()
 	{
-		$scope.board = __defaultBoard;
+		$scope.board = angular.copy(__defaultBoard);
 
 		$scope.data.moves = [];
 		$scope.data.placeDot = true;
@@ -262,6 +262,8 @@ angular.module('MorpionSolitaire', ['Tools'])
 		$scope.data.drawLine = false;
 		$scope.data.drawLineStart = false;
 		$scope.data.done = false;
+
+		drawGrid();
 	};
 
 	$scope.setLanguage = function(lang)
