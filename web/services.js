@@ -265,11 +265,11 @@ angular.module('Tools', [])
 
 		if (!buttons)
 		{
-			buttons.push({
+			buttons = [{
 				text: 'close',
 				default: true,
 				cancel: true
-			});
+			}];
 		}
 
 		for (var i = 0; i < buttons.length; i++)
