@@ -77,7 +77,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 			angular.extend($scope.data, data);
 			drawGrid();
 		});
-	});
+	}); // $q.all().then()
 
 	$window.onbeforeunload =
 		function(e)
@@ -94,7 +94,8 @@ angular.module('MorpionSolitaire', ['Tools'])
 	_canvas.lineWidth = 2;	
 
 	$(board)
-		.on('mousemove', function(event) {
+		.on('mousemove', function(event)
+		{
 			$scope.data.cursorX = event.offsetX - __gridOffset;
 			$scope.data.cursorY = event.offsetY - __gridOffset;
 			$scope.data.selectionX = parseInt($scope.data.cursorX / __gridSize + 0.5);
@@ -102,6 +103,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 
 			drawGrid();
 		})
+
 		.on('mousedown', function(event)
 		{
 			if (event.button === 0)
@@ -119,8 +121,13 @@ angular.module('MorpionSolitaire', ['Tools'])
 						drawGrid();
 					}
 				}
-			}
-			else if (event.button === 2)
+
+				event.preventDefault();
+
+				return false;
+			} // if (event.button === 0)
+
+			if (event.button === 2)
 			{
 				if (!$scope.data.placeDot && !$scope.data.drawLineStart)
 				{
@@ -133,11 +140,18 @@ angular.module('MorpionSolitaire', ['Tools'])
 				{
 					undo();
 				}
-			}
+
+				event.preventDefault();
+
+				return false;
+			} // if (event.button === 2)
 
 			event.preventDefault();
+
 			return false;
-		})
+
+		}) // .on('mousedown')
+
 		.on('mouseup', function(event)
 		{
 			if (event.button !== 0)
@@ -171,13 +185,23 @@ angular.module('MorpionSolitaire', ['Tools'])
 						y: $scope.data.selectionY
 					});
 				}
-			}
-			else if ($scope.data.drawLineStart)
+
+				drawGrid();
+
+				return;
+			} // if ($scope.data.placeDot)
+
+			if ($scope.data.drawLineStart)
 			{
 				$scope.data.drawLineStart = false;
 				$scope.data.drawLineStart = false;
-			}
-			else if ($scope.data.drawLine)
+
+				drawGrid();
+
+				return;
+			} // if ($scope.data.drawLineStart)
+
+			if ($scope.data.drawLine)
 			{
 				var line = checkLine();
 
@@ -215,42 +239,51 @@ angular.module('MorpionSolitaire', ['Tools'])
 						$scope.data.placeDot = true;
 						++$scope.board.lineCount;
 					});
-				}
-			}
+				} // if (line.ok)
+
+				drawGrid();
+
+				return;
+			} // if ($scope.data.drawLin)
 
 			drawGrid();
-		});
+
+		}); // .on('mouseup')
 
 
 	$scope.finish = function()
 	{
 		dialog.input(
 			'enter-your-name',
-			function(name)
-			{
-				if (!name)
-				{
-					dialog.ok('enter-your-name');
-					return true;
-				}
-
-				server.writeStore('userName', name);
-				server.fetch(
-					'submit',
-					{
-						board: 0,
-						dots: 5,
-						moves: $scope.data.moves,
-						name: name
-					}
-				);
-
-				$scope.data.done = true;
-				drawGrid();
-			},
+			checkEnter,
 			server.readStore('userName')
 		);
-	};
+
+		function checkEnter(name)
+		{
+			if (!name)
+			{
+				dialog.ok('enter-your-name');
+				return true;
+			}
+
+			server.writeStore('userName', name);
+			server.fetch(
+				'submit',
+				{
+					board: 0,
+					dots: 5,
+					moves: $scope.data.moves,
+					name: name
+				}
+			);
+
+			$scope.data.done = true;
+			drawGrid();
+
+		} // function checkEnter()
+
+	}; // $scope.finish()
 
 	$scope.newGame = function()
 	{
@@ -264,7 +297,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 		$scope.data.done = false;
 
 		drawGrid();
-	};
+	}; // $scope.newGame()
 
 	$scope.setLanguage = function(lang)
 	{
@@ -318,7 +351,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 			}
 
 			dy += __gridSize;
-		}
+		} // for (__boardSize)
 
 
 		function drawItem(dx, dy, item, line)
@@ -334,6 +367,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 			{
 				board.style.cursor = 'default';
 			}
+
 			if (!$scope.data.placeDot)
 			{
 				if ($scope.data.drawLine)
@@ -360,23 +394,23 @@ angular.module('MorpionSolitaire', ['Tools'])
 						board.style.cursor = 'default';
 					}
 					_canvas.stroke();
-				}
-				else
-				{
-					board.style.cursor = (item != null ? 'pointer' : 'default');
-					_canvas.beginPath();
-					_canvas.moveTo(dx - __gridLine, dy - __gridLine);
-					_canvas.lineTo(dx + __gridLine, dy + __gridLine);
-					_canvas.moveTo(dx - __gridLine, dy + __gridLine);
-					_canvas.lineTo(dx + __gridLine, dy - __gridLine);
-					_canvas.moveTo(dx - __gridLine, dy);
-					_canvas.lineTo(dx + __gridLine, dy);
-					_canvas.moveTo(dx, dy - __gridLine);
-					_canvas.lineTo(dx, dy + __gridLine);
-					_canvas.strokeStyle = (item != null ? '#0a0' : '#c00');
-					_canvas.lineWidth = 3;
-					_canvas.stroke();
-				}
+					return;
+				} // if ($scope.data.drawLine)
+
+				board.style.cursor = (item != null ? 'pointer' : 'default');
+				_canvas.beginPath();
+				_canvas.moveTo(dx - __gridLine, dy - __gridLine);
+				_canvas.lineTo(dx + __gridLine, dy + __gridLine);
+				_canvas.moveTo(dx - __gridLine, dy + __gridLine);
+				_canvas.lineTo(dx + __gridLine, dy - __gridLine);
+				_canvas.moveTo(dx - __gridLine, dy);
+				_canvas.lineTo(dx + __gridLine, dy);
+				_canvas.moveTo(dx, dy - __gridLine);
+				_canvas.lineTo(dx, dy + __gridLine);
+				_canvas.strokeStyle = (item != null ? '#0a0' : '#c00');
+				_canvas.lineWidth = 3;
+				_canvas.stroke();
+
 			} // if (!$scope.data.placeDot)
 
 		} // function drawItem()
@@ -445,48 +479,53 @@ angular.module('MorpionSolitaire', ['Tools'])
 
 	function undo()
 	{
-		if ($scope.data.moves.length > 0)
+		if ($scope.data.moves.length === 0)
 		{
-			var undo = $scope.data.moves.pop();
+			return;
+		}
 
-			if (undo.dot)
-			{
-				$scope.board.grid[undo.y][undo.x] = null;
-				$scope.board.list.pop();
-				$scope.data.placeDot = true;
-				--$scope.data.ordinal;
-			}
-			else
-			{
-				var line = __line[undo.dir];
+		var undo = $scope.data.moves.pop();
 
-				for (var i = 0; i <= __lineLength; i++)
-				{
-					if (i < __lineLength)
-					{
-						$scope.board.list[$scope.board.grid[undo.y][undo.x]].line[undo.dir] = 0;
-					}
-					if (i > 0)
-					{
-						$scope.board.list[$scope.board.grid[undo.y][undo.x]].line[line.reverse] = 0;
-					}
-
-					undo.x += line.x;
-					undo.y += line.y;
-				}
-
-				$scope.data.drawLine = false;
-				$scope.data.drawLineStart = true;
-				$scope.data.placeDot = false;
-
-				$timeout(function()
-				{
-					--$scope.board.lineCount;
-				});
-			}
+		if (undo.dot)
+		{
+			$scope.board.grid[undo.y][undo.x] = null;
+			$scope.board.list.pop();
+			$scope.data.placeDot = true;
+			--$scope.data.ordinal;
 
 			drawGrid();
+
+			return;
 		}
+
+		var line = __line[undo.dir];
+
+		for (var i = 0; i <= __lineLength; i++)
+		{
+			if (i < __lineLength)
+			{
+				$scope.board.list[$scope.board.grid[undo.y][undo.x]].line[undo.dir] = 0;
+			}
+			if (i > 0)
+			{
+				$scope.board.list[$scope.board.grid[undo.y][undo.x]].line[line.reverse] = 0;
+			}
+
+			undo.x += line.x;
+			undo.y += line.y;
+		}
+
+		$scope.data.drawLine = false;
+		$scope.data.drawLineStart = true;
+		$scope.data.placeDot = false;
+
+		$timeout(function()
+		{
+			--$scope.board.lineCount;
+		});
+
+		drawGrid();
+
 	} // function undo()
 
 	function checkLine()
