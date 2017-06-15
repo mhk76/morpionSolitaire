@@ -7,7 +7,6 @@ require('./serverManager.js')({
 		"root": "./web/",
 		"defaultFile": "client.html",
 		"protocol": "http",
-		"port": 8080,
 		"httpsKeyFile": null,
 		"httpsCertFile": null,
 		"postBlockLimit": 1e5,
