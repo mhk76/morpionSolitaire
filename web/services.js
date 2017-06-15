@@ -58,44 +58,46 @@ angular.module('Tools', [])
 	_service.formatDate = function(date, format)
 	{
 		var dateStr = _service.get(format || '_date');
+		var month = date.getMonth() + 1;
+		var day = date.getDate();
+		var hours = date.getHours();
+		var minutes = date.getMinutes();
 
 		if (dateStr.indexOf('%a') === -1)
 		{
 			dateStr = dateStr.replace('%yyyy', date.getFullYear());
 			dateStr = dateStr.replace('%yy', date.getYear());
-			dateStr = dateStr.replace('%dd', date.getDate().leftPad(2, '0'));
-			dateStr = dateStr.replace('%d', date.getDate());
-			dateStr = dateStr.replace('%mm', date.getMonth().leftPad(2, '0'));
-			dateStr = dateStr.replace('%m', date.getMonth());
-			dateStr = dateStr.replace('%hh', date.getHours().leftPad(2, '0'));
-			dateStr = dateStr.replace('%h', date.getHours());
-			dateStr = dateStr.replace('%nn', date.getMinutes().leftPad(2, '0'));
-			dateStr = dateStr.replace('%n', date.getMinutes());
+			dateStr = dateStr.replace('%dd', day.leftPad(2, '0'));
+			dateStr = dateStr.replace('%d', day);
+			dateStr = dateStr.replace('%mm', month.leftPad(2, '0'));
+			dateStr = dateStr.replace('%m', month);
+			dateStr = dateStr.replace('%hh', hours.leftPad(2, '0'));
+			dateStr = dateStr.replace('%h', hours);
+			dateStr = dateStr.replace('%nn', minutes.leftPad(2, '0'));
+			dateStr = dateStr.replace('%n', minutes);
 		}
 		else
 		{
-			var h = date.getHours();
-
 			dateStr = dateStr.replace('%yyyy', date.getFullYear());
 			dateStr = dateStr.replace('%yy', date.getYear());
-			dateStr = dateStr.replace('%mm', date.getMonth().leftPad(2, '0'));
-			dateStr = dateStr.replace('%m', date.getMonth());
-			dateStr = dateStr.replace('%dd', date.getDate().leftPad(2, '0'));
-			dateStr = dateStr.replace('%d', date.getDate());
-			dateStr = dateStr.replace('%nn', date.getMinutes().leftPad(2, '0'));
-			dateStr = dateStr.replace('%n', date.getMinutes());
-			if (h >= 12)
+			dateStr = dateStr.replace('%mm', month.leftPad(2, '0'));
+			dateStr = dateStr.replace('%m', month);
+			dateStr = dateStr.replace('%dd', day.leftPad(2, '0'));
+			dateStr = dateStr.replace('%d', day);
+			dateStr = dateStr.replace('%nn', minutes.leftPad(2, '0'));
+			dateStr = dateStr.replace('%n', minutes);
+			if (hours >= 12)
 			{
 				dateStr = dateStr.replace('%a', 'PM');
-				h = h - 12;
+				hours = hours - 12;
 			}
 			else
 			{
 				dateStr = dateStr.replace('%a', 'AM');
 			}
-			h = (h === 0 ? 12 : h);
-			dateStr = dateStr.replace('%hh', h.leftPad(2, '0'));
-			dateStr = dateStr.replace('%h', h);
+			hours = (hours === 0 ? 12 : hours);
+			dateStr = dateStr.replace('%hh', hours.leftPad(2, '0'));
+			dateStr = dateStr.replace('%h', hours);
 		}
 
 		return dateStr;
@@ -508,7 +510,7 @@ angular.module('Tools', [])
 				if (responseData.status === 'error') 
 				{
 					dialog.ok(responseData.data);
-					deferred.reject();
+					deferred.reject(responseData.data);
 					return;
 				}
 
@@ -528,7 +530,7 @@ angular.module('Tools', [])
 			function(response, r)
 			{
 				dialog.ok(response.statusText);
-				deferred.reject();
+				deferred.reject(response.statusText);
 			}
 		);
 
@@ -583,7 +585,7 @@ angular.module('Tools', [])
 			if (response.status === 'error') 
 			{
 				dialog.ok(response.data);
-				deferred.reject();
+				deferred.reject(response.data);
 				return;
 			}
 

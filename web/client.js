@@ -8,7 +8,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 	const __gridOffset = 10;
 	const __gridLine = __gridSize / 2;
 	const __canvasSize = __boardSize * __gridSize + 1;
-	const __lineLength = 4;
+	const __lineMax = 4;
 	const __dirUpLeft = 0;
 	const __dirUp = 1;
 	const __dirUpRight = 2;
@@ -82,7 +82,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 	$window.onbeforeunload =
 		function(e)
 		{
-			return $scope.board.lineCount > 0 ? true : null;
+			return !$scope.data.done && $scope.board.lineCount > 0 ? true : null;
 		};
 
 
@@ -216,9 +216,9 @@ angular.module('MorpionSolitaire', ['Tools'])
 						dir: line.direction
 					});
 
-					for (var i = 0; i <= __lineLength; i++)
+					for (var i = 0; i <= __lineMax; i++)
 					{
-						if (i < __lineLength)
+						if (i < __lineMax)
 						{
 							$scope.board.list[$scope.board.grid[iy][ix]].line[line.direction] = 1;
 						}
@@ -276,7 +276,15 @@ angular.module('MorpionSolitaire', ['Tools'])
 					moves: $scope.data.moves,
 					name: name
 				}
-			);
+			).then(function(data)
+			{
+				if (data.message)
+				{
+					dialog.ok(data.message);
+					delete data.message;
+				}
+				angular.extend($scope.data, data);
+			});
 
 			$scope.data.done = true;
 			drawGrid();
@@ -380,8 +388,8 @@ angular.module('MorpionSolitaire', ['Tools'])
 						$scope.data.lineY * __gridSize + __gridOffset
 					);
 					_canvas.lineTo(
-						($scope.data.lineX + line.x * __lineLength) * __gridSize + __gridOffset,
-						($scope.data.lineY + line.y * __lineLength) * __gridSize + __gridOffset
+						($scope.data.lineX + line.x * __lineMax) * __gridSize + __gridOffset,
+						($scope.data.lineY + line.y * __lineMax) * __gridSize + __gridOffset
 					);
 					if (line.ok)
 					{
@@ -500,9 +508,9 @@ angular.module('MorpionSolitaire', ['Tools'])
 
 		var line = __line[undo.dir];
 
-		for (var i = 0; i <= __lineLength; i++)
+		for (var i = 0; i <= __lineMax; i++)
 		{
-			if (i < __lineLength)
+			if (i < __lineMax)
 			{
 				$scope.board.list[$scope.board.grid[undo.y][undo.x]].line[undo.dir] = 0;
 			}
@@ -604,9 +612,9 @@ angular.module('MorpionSolitaire', ['Tools'])
 		var ix = $scope.data.lineX;
 		var iy = $scope.data.lineY;
 
-		for (var i = 0; i <= __lineLength; i++)
+		for (var i = 0; i <= __lineMax; i++)
 		{
-			if (check(ix, iy, output.direction, output.reverse, i === 0, i === __lineLength))
+			if (check(ix, iy, output.direction, output.reverse, i === 0, i === __lineMax))
 			{
 				return output;
 			}

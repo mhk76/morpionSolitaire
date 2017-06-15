@@ -20,6 +20,9 @@
 
 		"enter-your-name": "Enter your name",
 
+		"new-highscore": "Congratulation! You made it to the highscore table",
+		"same-result": "The exactly same game was already submitted. No highscore",
+		"invalid-data": "Invalid data",
 		"unknown-error": "Unknown error"
 	},
 	"fi": {
@@ -43,6 +46,9 @@
 
 		"enter-your-name": "Anna nimesi",
 
+		"new-highscore": "Onneksi olkoon! Pääsit parhaimpien joukkoon",
+		"same-result": "Täsmälleen sama peli on jo pelattu. Ei tulosta",
+		"invalid-data": "Virheellistä dataa",
 		"unknown-error": "Tuntematon virhe"
 	}
 }
