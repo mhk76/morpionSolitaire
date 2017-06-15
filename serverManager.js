@@ -138,13 +138,19 @@ module.exports = function(config)
 
 	_this.writeLog = function(protocol, status, request, startTime, err)
 	{
-		startTime = startTime || new Date().getTime();
+		var duration = new Date().getTime() - (startTime || new Date().getTime());
+
+		if (duration > 100)
+		{
+			console.log('slow action: ', protocol, duration)
+		}
+
 		request = request || {};
 
 		var data = {
 			protocol: protocol,
 			status: status,
-			duration: new Date().getTime() - startTime
+			duration: duration
 		};
 		if (request.action)
 		{

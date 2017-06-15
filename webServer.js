@@ -118,7 +118,7 @@ module.exports = function(serverManager)
 
 				request.on('end', function() {
 					var inputData = queryData.join('');
-					var json = JSON.stringify(inputData);
+					var json = JSON.parse(inputData);
 					var buffer = {};
 					var appRequest = {
 						userId: json.userId,
