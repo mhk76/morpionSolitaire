@@ -32,12 +32,12 @@ module.exports = function(serverManager)
 			},
 			HttpListener
 		);
-		port = process.env.port || serverManager.config.web.port || 443;
+		port = process.env.PORT || serverManager.config.web.port || 443;
 	}
 	else
 	{
 		server = http.createServer(HttpListener);
-		port = process.env.port || serverManager.config.web.port || 80;
+		port = process.env.PORT || serverManager.config.web.port || 80;
 	}
 
 	server.listen(

@@ -1,6 +1,6 @@
 {
 	"name": "morpion-solitaire",
-	"version": "0.0.1",
+	"version": "1.0.0",
 	"description": "Morpion solitaire game",
 	"main": "server.js",
 	"scripts": {
