@@ -58,6 +58,7 @@ module.exports = function(serverManager)
 								appRequest.outputDataLength = outputData.length;
 
 								serverManager.writeLog('ws', 'response', appRequest, startTime);
+
 								webSocket.send(outputData);
 							},
 							terminate: function()
@@ -76,33 +77,34 @@ module.exports = function(serverManager)
 
 					if (!appRequest.requestId)
 					{
-						serverManager.writeLog('ws', 'missing-requestId', appRequest, startTime, err);
+						serverManager.writeLog('ws', 'missing-requestId', appRequest, startTime);
 						webSocket.terminate();
 						return;
 					}
 					if (!appRequest.action)
 					{
-						serverManager.writeLog('ws', 'missing-action', appRequest, startTime, err);
+						serverManager.writeLog('ws', 'missing-action', appRequest, startTime);
 						webSocket.terminate();
 						return;
 					}
 					if (!appRequest.userId)
 					{
-						if (webSocket.userId && webSocket.userId != appRequest.userId)
-						{
-							serverManager.writeLog('ws', 'invalid-userId', appRequest, startTime, err);
-							webSocket.terminate();
-							return;
-						}
 						appRequest.userId = Math.random().toString().substr(2) + Math.random().toString().substr(1); 
+					}
+					if (webSocket.userId && webSocket.userId !== appRequest.userId)
+					{
+						serverManager.writeLog('ws', 'invalid-userId', appRequest, startTime);
+						webSocket.terminate();
+						delete _webSockets[webSocket.userId];
+						return;
 					}
 					
 					webSocket.userId = appRequest.userId;
 
-					if (_webSockets[webSocket.userId])
+					if (_webSockets[webSocket.userId] && _webSockets[webSocket.userId].webSocket !== webSocket)
 					{
-						serverManager.writeLog('ws', 'terminate-old', appRequest, startTime, err);
-						_webSockets[webSocket.userId].terminate();
+						serverManager.writeLog('ws', 'terminate-old', appRequest, startTime);
+						_webSockets[webSocket.userId].webSocket.terminate();
 					}
 
 					_webSockets[webSocket.userId] = {

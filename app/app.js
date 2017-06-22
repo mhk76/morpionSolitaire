@@ -26,6 +26,7 @@ const __line = [
 const __moveChar = '0123456789abcdefghijklmnopqrstuvwxyz#-!%'.split('');
 const __highscoreLimit = 20;
 
+var _clone = require('clone');
 var _serverManager;
 var _highscores = [{
 		name: 'Mikko',
@@ -115,9 +116,9 @@ function onSubmit(request)
 	
 	for (var i = 0; i < _highscores.length; i++)
 	{
-		if (boardString === _highscores[i].string)
+		if (boardString == _highscores[i].string)
 		{
-			index === -1
+			index = -1;
 			break;
 		}
 		if (lineCount > _highscores[i].lineCount)
@@ -177,7 +178,10 @@ function checkSubmit(parameters)
 		return true;
 	}
 
-	var board = __defaultBoard;
+	var board = {
+		lineCount: 0,
+		grid: _clone(__defaultBoard.grid)
+	};
 	var dot = true;
 
 	for (var i = 0; i < parameters.moves.length; i++)

@@ -160,6 +160,10 @@ module.exports = function(config)
 		{
 			data['url'] = request.url;
 		}
+		if (request.method)
+		{
+			data['method'] = request.method;
+		}
 		if (request.connection)
 		{
 			data['ip'] = request.connection.remoteAddress;
