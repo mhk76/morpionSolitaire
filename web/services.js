@@ -1,15 +1,3 @@
-Number.prototype.leftPad = function(length, padChar)
-{
-	var output = this.toString();
-
-	if (output.length < length)
-	{
-		return (padChar || '0').toString().substr(0, 1).repeat(length - output.length) + output;
-	}
-
-	return output.slice(-length);
-};
-
 angular.module('Tools', [])
 .service('dictionary', function($q, $http, $rootScope)
 {
@@ -26,11 +14,15 @@ angular.module('Tools', [])
 		$rootScope.$broadcast('dictionary-setLanguage', lang);
 	}
 
-	_service.get = function(term, index)
+	_service.get = function(term, index, defaultValue)
 	{
+		if (defaultValue === undefined && typeof index === 'string')
+		{
+			return (_dictionary[_lang] && _dictionary[_lang][term]) || defaultValue;
+		}
 		if (index === undefined)
 		{
-			return (_dictionary[_lang] && _dictionary[_lang][term]) || term;
+			return (_dictionary[_lang] && _dictionary[_lang][term]) || defaultValue || term;
 		}
 		if (_dictionary[_lang] && _dictionary[_lang][term])
 		{
@@ -57,7 +49,7 @@ angular.module('Tools', [])
 
 	_service.formatDate = function(date, format)
 	{
-		var dateStr = _service.get(format || '_date');
+		var dateStr = _service.get(format || '_date', '%yyyy-%mm-%dd');
 		var month = date.getMonth() + 1;
 		var day = date.getDate();
 		var hours = date.getHours();
@@ -560,7 +552,7 @@ angular.module('Tools', [])
 
 	function connect()
 	{
-		_webSocket = new WebSocket(protocol + location.host);
+		_webSocket = new WebSocket(_protocol + location.host);
 	}
 
 	// Catch if server does not support WebSockets
@@ -593,11 +585,11 @@ angular.module('Tools', [])
 
 			if (localStorage && localStorage.setItem)
 			{
-				localStorage.setItem('userId', responseData.userId);
+				localStorage.setItem('userId', response.userId);
 			}
 			else
 			{
-				cookie.write('userId', responseData.userId);
+				cookie.write('userId', response.userId);
 			}
 
 			for (var key in _listeners)
@@ -624,6 +616,7 @@ angular.module('Tools', [])
 		{
 			_service.onconnect(true);
 		}
+		_service.supported = true;
 		_loader.resolve();
 	}
 
@@ -726,15 +719,29 @@ angular.module('Tools', [])
 		}
 	});
 
-	_service.readStore = function(name)
+	_service.readStore = function(name, defaultValue)
 	{
+		var value;
+
 		if (localStorage && localStorage.getItem)
 		{
-			return localStorage.getItem(name);
+			value = localStorage.getItem(name)
 		}
 		else
 		{
-			return JSON.parse(cookie.read(name));
+			value = cookie.read(name);
+		}
+		if (value === undefined)
+		{
+			return defaultValue;
+		}
+		try
+		{
+			return JSON.parse(value);
+		}
+		catch(err)
+		{
+			return defaultValue;
 		}
 	};
 
@@ -742,7 +749,7 @@ angular.module('Tools', [])
 	{
 		if (localStorage && localStorage.setItem)
 		{
-			localStorage.setItem(name, data);
+			localStorage.setItem(name, JSON.stringify(data));
 		}
 		else
 		{
@@ -831,7 +838,7 @@ angular.module('Tools', [])
 			$controller.$formatters.push(function(d)
 			{
 				var dt = new Date(d);
-				return dt.getFullYear() + '-' + ('00' + (dt.getMonth() + 1)).substr(-2) + '-' + dt.getDate();
+				return dt.getFullYear() + '-' + (dt.getMonth() + 1).padLeft(2) + '-' + dt.getDate().padLeft(2);
 			});
 
             var release = $scope.$watch(

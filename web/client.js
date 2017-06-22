@@ -38,16 +38,17 @@ angular.module('MorpionSolitaire', ['Tools'])
 		+ '   o  o   |'
 		+ '   o  o   |'
 		+ '   oooo   ');
+	const statePlaceDot = 0;
+	const stateLineStart = 1;
+	const stateLineDraw = 2
+	const stateDone = 3;
 
 	$scope.board = angular.copy(__defaultBoard);
 	$scope.data = {		
 		moves: [],
 		highscores: [],
-		placeDot: true,
+		state: statePlaceDot,
 		ordinal: 0,
-		drawLine: false,
-		drawLineStart: false,
-		done: false,
 		selectionX: null,
 		selectionY: null
 	};
@@ -75,6 +76,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 		server.fetch('init').then(function(data)
 		{
 			angular.extend($scope.data, data);
+			showHighscores();
 			drawGrid();
 		});
 	}); // $q.all().then()
@@ -82,7 +84,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 	$window.onbeforeunload =
 		function(e)
 		{
-			return !$scope.data.done && $scope.board.lineCount > 0 ? true : null;
+			return ($scope.data.state !== stateDone && $scope.board.lineCount > 0) ? true : null;
 		};
 
 
@@ -96,10 +98,8 @@ angular.module('MorpionSolitaire', ['Tools'])
 	$(board)
 		.on('mousemove', function(event)
 		{
-			$scope.data.cursorX = event.offsetX - __gridOffset;
-			$scope.data.cursorY = event.offsetY - __gridOffset;
-			$scope.data.selectionX = parseInt($scope.data.cursorX / __gridSize + 0.5);
-			$scope.data.selectionY = parseInt($scope.data.cursorY / __gridSize + 0.5);
+			$scope.data.selectionX = parseInt((event.offsetX - __gridOffset) / __gridSize + 0.5);
+			$scope.data.selectionY = parseInt((event.offsetY - __gridOffset) / __gridSize + 0.5);
 
 			drawGrid();
 		})
@@ -108,18 +108,14 @@ angular.module('MorpionSolitaire', ['Tools'])
 		{
 			if (event.button === 0)
 			{
-				if (!$scope.data.placeDot && !$scope.data.drawLine && $scope.data.drawLineStart)
+				if ($scope.data.state === stateLineStart && $scope.board.grid[$scope.data.selectionY][$scope.data.selectionX] != null)
 				{
-					if ($scope.board.grid[$scope.data.selectionY][$scope.data.selectionX] != null)
-					{
-						$scope.data.drawLine = true;
-						$scope.data.drawLineStart = true;
-
+					$timeout(function() {
 						$scope.data.lineX = $scope.data.selectionX;
 						$scope.data.lineY = $scope.data.selectionY;
-
+						$scope.data.state = stateLineDraw;
 						drawGrid();
-					}
+					});
 				}
 
 				event.preventDefault();
@@ -129,12 +125,13 @@ angular.module('MorpionSolitaire', ['Tools'])
 
 			if (event.button === 2)
 			{
-				if (!$scope.data.placeDot && !$scope.data.drawLineStart)
+				if ($scope.data.state === stateLineDraw)
 				{
-					$scope.data.drawLine = false;
-					$scope.data.drawLineStart = true;
-
-					drawGrid();
+					$timeout(function()
+					{
+						$scope.data.state = stateLineStart;
+						drawGrid();
+					})
 				}
 				else
 				{
@@ -147,7 +144,6 @@ angular.module('MorpionSolitaire', ['Tools'])
 			} // if (event.button === 2)
 
 			event.preventDefault();
-
 			return false;
 
 		}) // .on('mousedown')
@@ -159,7 +155,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 				event.preventDefault();
 				return false;
 			}
-			if ($scope.data.placeDot)
+			if ($scope.data.state === statePlaceDot)
 			{
 				if ($scope.board.grid[$scope.data.selectionY][$scope.data.selectionX] == null)
 				{
@@ -174,10 +170,9 @@ angular.module('MorpionSolitaire', ['Tools'])
 
 					$timeout(function()
 					{
-						$scope.data.placeDot = false;
+						$scope.data.state = stateLineStart;
+						drawGrid();
 					});
-					$scope.data.drawLine = false;
-					$scope.data.drawLineStart = true;
 
 					$scope.data.moves.push({
 						dot: 1,
@@ -185,23 +180,10 @@ angular.module('MorpionSolitaire', ['Tools'])
 						y: $scope.data.selectionY
 					});
 				}
-
-				drawGrid();
-
 				return;
-			} // if ($scope.data.placeDot)
+			} // if ($scope.data.state === statePlaceDot)
 
-			if ($scope.data.drawLineStart)
-			{
-				$scope.data.drawLineStart = false;
-				$scope.data.drawLineStart = false;
-
-				drawGrid();
-
-				return;
-			} // if ($scope.data.drawLineStart)
-
-			if ($scope.data.drawLine)
+			if ($scope.data.state === stateLineDraw)
 			{
 				var line = checkLine();
 
@@ -231,12 +213,9 @@ angular.module('MorpionSolitaire', ['Tools'])
 						iy += line.y;
 					}
 
-					$scope.data.drawLine = false;
-					$scope.data.drawLineStart = false;
-
 					$timeout(function()
 					{
-						$scope.data.placeDot = true;
+						$scope.data.state = statePlaceDot;
 						++$scope.board.lineCount;
 					});
 				} // if (line.ok)
@@ -244,7 +223,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 				drawGrid();
 
 				return;
-			} // if ($scope.data.drawLin)
+			} // if ($scope.data.state === stateLineDraw)
 
 			drawGrid();
 
@@ -284,10 +263,60 @@ angular.module('MorpionSolitaire', ['Tools'])
 					delete data.message;
 				}
 				angular.extend($scope.data, data);
+
+				var highscores = server.readStore('highscores') || [];
+				var today = new Date();
+				var index = -1;
+
+				for (var i = 0; i < highscores.length; i++)
+				{
+					if ($scope.data.moves.length > highscores[i].moves.length)
+					{
+						index = i;
+						break;
+					}
+					if (
+						$scope.data.moves.length === highscores[i].moves.length
+						&& $scope.data.moves.equals(highscores[i].moves)
+					)
+					{
+						index = null;
+						break;
+					}
+				}
+
+				if (index === -1)
+				{
+					highscores.push({
+						name: name,
+						lineCount: parseInt($scope.data.moves.length / 2),
+						date: new Date(today.getFullYear(), today.getMonth(), today.getDate()),
+						moves: $scope.data.moves
+					});
+				}
+				else if (index !== null)
+				{
+					highscores.splice(
+						i, 0,
+						{
+							name: name,
+							lineCount: parseInt($scope.data.moves.length / 2),
+							date: new Date(today.getFullYear(), today.getMonth(), today.getDate()),
+							moves: $scope.data.moves
+						}
+					)
+				}
+
+				server.writeStore('highscores', highscores);
+
+				showHighscores();
 			});
 
-			$scope.data.done = true;
-			drawGrid();
+			$timeout(function()
+			{
+				$scope.data.state = stateDone;
+				drawGrid();
+			})
 
 		} // function checkEnter()
 
@@ -298,11 +327,8 @@ angular.module('MorpionSolitaire', ['Tools'])
 		$scope.board = angular.copy(__defaultBoard);
 
 		$scope.data.moves = [];
-		$scope.data.placeDot = true;
+		$scope.data.state = statePlaceDot;
 		$scope.data.ordinal = 0;
-		$scope.data.drawLine = false;
-		$scope.data.drawLineStart = false;
-		$scope.data.done = false;
 
 		drawGrid();
 	}; // $scope.newGame()
@@ -315,6 +341,26 @@ angular.module('MorpionSolitaire', ['Tools'])
 	}
 
 
+	function showHighscores()
+	{
+		var highscores = server.readStore('highscores') || [];
+
+		for (var i = 0; i < $scope.data.highscores.length; i++)
+		{
+			for (var j = 0; j < highscores.length; j++)
+			{
+				if (
+					$scope.data.highscores[i].length === highscores[j].moves.length
+					&& $scope.data.highscores[i].equals(highscores[j].moves)
+				)
+				{
+					$scope.data.highscores[i].own = true;
+					break;
+				}
+			}
+		}
+	}
+
 	function drawGrid()
 	{
 		_canvas.clearRect(0, 0, __canvasSize, __canvasSize);
@@ -326,7 +372,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 			ok: false
 		};
 
-		if ($scope.data.drawLine && !$scope.data.done)
+		if ($scope.data.state === stateLineDraw)
 		{
 			line = checkLine();
 		}
@@ -341,14 +387,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 
 				if (x === $scope.data.selectionX && y === $scope.data.selectionY)
 				{
-					if (!$scope.data.done)
-					{
-						drawItem(dx, dy, item, line);
-					}
-				}
-				else
-				{
-					board.style.cursor = 'default';
+					drawItem(dx, dy, item, line);
 				}
 				if (item != null)
 				{
@@ -364,63 +403,49 @@ angular.module('MorpionSolitaire', ['Tools'])
 
 		function drawItem(dx, dy, item, line)
 		{
-			if ($scope.data.placeDot && item == null)
+			if ($scope.data.state === stateDone)
 			{
-				board.style.cursor = 'pointer';
+				return;
+			}
+
+			if ($scope.data.state === statePlaceDot)
+			{
 				_canvas.beginPath();
+				_canvas.fillStyle = (item == null ? '#000' : '#c00');
 				_canvas.arc(dx, dy, 7, 0, Math.TAU);
 				_canvas.fill();
-			}
-			else
-			{
-				board.style.cursor = 'default';
-			}
+				return;
+			} // if ($scope.data.state === statePlaceDot)
 
-			if (!$scope.data.placeDot)
+			if ($scope.data.state === stateLineDraw)
 			{
-				if ($scope.data.drawLine)
-				{
-					board.style.cursor = 'pointer';
-					_canvas.beginPath();
-					_canvas.lineWidth = 3;
-					_canvas.moveTo(
-						$scope.data.lineX * __gridSize + __gridOffset,
-						$scope.data.lineY * __gridSize + __gridOffset
-					);
-					_canvas.lineTo(
-						($scope.data.lineX + line.x * __lineMax) * __gridSize + __gridOffset,
-						($scope.data.lineY + line.y * __lineMax) * __gridSize + __gridOffset
-					);
-					if (line.ok)
-					{
-						_canvas.strokeStyle = '#0a0';
-						board.style.cursor = 'pointer';
-					}
-					else
-					{
-						_canvas.strokeStyle = '#c00';
-						board.style.cursor = 'default';
-					}
-					_canvas.stroke();
-					return;
-				} // if ($scope.data.drawLine)
-
-				board.style.cursor = (item != null ? 'pointer' : 'default');
 				_canvas.beginPath();
-				_canvas.moveTo(dx - __gridLine, dy - __gridLine);
-				_canvas.lineTo(dx + __gridLine, dy + __gridLine);
-				_canvas.moveTo(dx - __gridLine, dy + __gridLine);
-				_canvas.lineTo(dx + __gridLine, dy - __gridLine);
-				_canvas.moveTo(dx - __gridLine, dy);
-				_canvas.lineTo(dx + __gridLine, dy);
-				_canvas.moveTo(dx, dy - __gridLine);
-				_canvas.lineTo(dx, dy + __gridLine);
-				_canvas.strokeStyle = (item != null ? '#0a0' : '#c00');
 				_canvas.lineWidth = 3;
+				_canvas.moveTo(
+					$scope.data.lineX * __gridSize + __gridOffset,
+					$scope.data.lineY * __gridSize + __gridOffset
+				);
+				_canvas.lineTo(
+					($scope.data.lineX + line.x * __lineMax) * __gridSize + __gridOffset,
+					($scope.data.lineY + line.y * __lineMax) * __gridSize + __gridOffset
+				);
+				_canvas.strokeStyle = (line.ok ? '#0a0' : '#c00');
 				_canvas.stroke();
+				return;
+			} // if ($scope.data.state === stateLineDraw)
 
-			} // if (!$scope.data.placeDot)
-
+			_canvas.beginPath();
+			_canvas.moveTo(dx - __gridLine, dy - __gridLine);
+			_canvas.lineTo(dx + __gridLine, dy + __gridLine);
+			_canvas.moveTo(dx - __gridLine, dy + __gridLine);
+			_canvas.lineTo(dx + __gridLine, dy - __gridLine);
+			_canvas.moveTo(dx - __gridLine, dy);
+			_canvas.lineTo(dx + __gridLine, dy);
+			_canvas.moveTo(dx, dy - __gridLine);
+			_canvas.lineTo(dx, dy + __gridLine);
+			_canvas.strokeStyle = (item != null ? '#0a0' : '#c00');
+			_canvas.lineWidth = 3;
+			_canvas.stroke();
 		} // function drawItem()
 
 		function defaultDot(dx, dy, item)
@@ -498,7 +523,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 		{
 			$scope.board.grid[undo.y][undo.x] = null;
 			$scope.board.list.pop();
-			$scope.data.placeDot = true;
+			$scope.data.state = statePlaceDot;
 			--$scope.data.ordinal;
 
 			drawGrid();
@@ -523,12 +548,9 @@ angular.module('MorpionSolitaire', ['Tools'])
 			undo.y += line.y;
 		}
 
-		$scope.data.drawLine = false;
-		$scope.data.drawLineStart = true;
-		$scope.data.placeDot = false;
-
 		$timeout(function()
 		{
+			$scope.data.state = stateLineStart;
 			--$scope.board.lineCount;
 		});
 
@@ -549,7 +571,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 			ok: false
 		};
 
-		if (dx  < 0)
+		if (dx < 0)
 		{
 			if (tan > Math.TanThree16th)
 			{
@@ -577,7 +599,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 				output.reverse = __dirUp;
 			}
 		}
-		else
+		else // if (dx >= 0)
 		{
 			if (tan > Math.TanThree16th)
 			{
@@ -604,7 +626,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 				output.direction = __dirUp;
 				output.reverse = __dirDown;
 			}
-		}
+		} // if (dx >= 0)
 
 		output.x = __line[output.direction].x;
 		output.y = __line[output.direction].y;
