@@ -1,9 +1,9 @@
-var ws = require('ws');
+let ws = require('ws');
 
 module.exports = function(serverManager)
 {
-	var _webSockets = {};
-	var _listener = function(request)
+	let _webSockets = {};
+	let _listener = function(request)
 		{
 			console.log('default webSocket listener', request);
 			request.response({}, 'ok');
@@ -15,13 +15,13 @@ module.exports = function(serverManager)
 			webSocket
 				.on('message', function(message)
 				{
-					var startTime = new Date().getTime();
-					var appRequest;
+					let startTime = new Date().getTime();
+					let appRequest;
 					
 					try
 					{
-						var json = JSON.parse(message);
-						var buffer = {};
+						let json = JSON.parse(message);
+						let buffer = {};
 
 						appRequest = {
 							requestId: json.requestId,
@@ -43,7 +43,7 @@ module.exports = function(serverManager)
 							},
 							response: function(data, status)
 							{
-								var outputData = JSON.stringify({
+								let outputData = JSON.stringify({
 									requestId: appRequest.requestId,									
 									userId: appRequest.userId,
 									status: status || 'ok',
@@ -139,7 +139,7 @@ module.exports = function(serverManager)
 		},
 		broadcast: function(target, dataType, data)
 		{
-			for (var userId in _webSockets)
+			for (let userId in _webSockets)
 			{
 				if (_webSockets[userId] && _webSockets[userId].target === target)
 				{

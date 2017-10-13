@@ -1,13 +1,13 @@
-var fs = require('fs');
+let fs = require('fs');
 
 require('./prototypes.js');
 
 module.exports = function(config)
 {
-	var _this = this;
-	var _cache = {};
-	var _altered = true;
-	var _mongodb;
+	let _this = this;
+	let _cache = {};
+	let _altered = true;
+	let _mongodb;
 
 	_this.config = config || {};
 
@@ -32,7 +32,7 @@ module.exports = function(config)
 	_this.config.log.format = _this.config.log.format || 'file';
 	_this.config.log.path = (_this.config.log.path || './log/').appendTrail('/');
 
-	var _app = require(_this.config.app.file);
+	let _app = require(_this.config.app.file);
 
 	if (_this.config.log.format === 'mongodb' || _this.config.cache.format === 'mongodb')
 	{
@@ -121,7 +121,7 @@ module.exports = function(config)
 			return _cache[section].data; 
 		}
 
-		for (var key in data)
+		for (let key in data)
 		{
 			if (data[key] === null)
 			{
@@ -138,7 +138,7 @@ module.exports = function(config)
 
 	_this.writeLog = function(protocol, status, request, startTime, err)
 	{
-		var duration = new Date().getTime() - (startTime || new Date().getTime());
+		let duration = new Date().getTime() - (startTime || new Date().getTime());
 
 		if (duration > 100)
 		{
@@ -147,7 +147,7 @@ module.exports = function(config)
 
 		request = request || {};
 
-		var data = {
+		let data = {
 			protocol: protocol,
 			status: status,
 			duration: duration
@@ -192,7 +192,7 @@ module.exports = function(config)
 		}
 		else
 		{
-			var date = new Date();
+			let date = new Date();
 
 			fs.appendFile(
 				_this.config.log.path + date.getFullYear() + '-' + (date.getMonth() + 1).leftPad(2, '0') + '-' + date.getDate().leftPad(2, '0') + '.log',
@@ -206,6 +206,7 @@ module.exports = function(config)
 	_this.restartApp = function()
 	{
 		console.log('Recycling modules...');
+
 		if (_app.subModules)
 		{
 			_app.subModules.forEach(
@@ -215,6 +216,7 @@ module.exports = function(config)
 				}
 			);
 		}
+
 		delete require.cache[require.resolve(_this.config.app.file)];
 
 		_app = require(_this.config.app.file);
@@ -233,8 +235,8 @@ module.exports = function(config)
 
 	if (_this.config.watchModules)
 	{
-		var restartTimer = null;
-		var modules = [_this.config.app.file];
+		let restartTimer = null;
+		let modules = [_this.config.app.file];
 
 		if (_app.subModules)
 		{
@@ -261,13 +263,13 @@ module.exports = function(config)
 	}
 
 
-	var webServer = require('./webServer.js');
+	let webServer = require('./webServer.js');
 
 	_this.webServer = new webServer(_this);
 
 	if (_this.config.web.webSockets)
 	{
-		var webSocket = require('./webSocket.js');
+		let webSocket = require('./webSocket.js');
 
 		_this.webSocket = new webSocket(_this);
 	}

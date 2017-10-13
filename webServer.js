@@ -1,9 +1,9 @@
-var http = require('http');
-var https = require('https');
-var fs = require('fs');
-var path = require('path');
+let http = require('http');
+let https = require('https');
+let fs = require('fs');
+let path = require('path');
 
-const _mime = {
+const $mime = {
 	'.html': 'text/html',
 	'.css': 'text/css',
 	'.json': 'application/json',
@@ -15,9 +15,9 @@ const _mime = {
 
 module.exports = function(serverManager)
 {
-	var server;
-	var port;
-	var _listener = function(request)
+	let _server;
+	let _port;
+	let _listener = function(request)
 		{
 			console.log('default POST listener', request);
 			request.response({}, 'ok');
@@ -25,40 +25,40 @@ module.exports = function(serverManager)
 
 	if (serverManager.config.web.protocol === 'https')
 	{
-		server = https.createServer(
+		_server = https.createServer(
 			{
 				key: fs.readFileSync(serverManager.config.web.httpsKeyFile),
 				cert: fs.readFileSync(serverManager.config.web.httpsCertFile)
 			},
 			HttpListener
 		);
-		port = process.env.PORT || serverManager.config.web.port || 443;
+		_port = process.env.PORT || serverManager.config.web.port || 443;
 	}
 	else
 	{
-		server = http.createServer(HttpListener);
-		port = process.env.PORT || serverManager.config.web.port || 80;
+		_server = http.createServer(HttpListener);
+		_port = process.env.PORT || serverManager.config.web.port || 80;
 	}
 
-	server.listen(
-		port,
+	_server.listen(
+		_port,
 		function()
 		{
 			serverManager.writeLog(serverManager.config.web.protocol, 'starting');
-			console.log('WebServer - listening to port ' + port);
+			console.log('WebServer - listening to port ' + _port);
 		}
 	);
 
-	server.setListener = function(callback)
+	_server.setListener = function(callback)
 	{
 		_listener = callback;
 	};
 
-	return server;
+	return _server;
 
 	function HttpListener(request, response, head)
 	{
-		var startTime = new Date().getTime();
+		let startTime = new Date().getTime();
 
 		try
 		{
@@ -66,8 +66,11 @@ module.exports = function(serverManager)
 			{
 				try
 				{
-					var url = path.parse(request.url);
-					var file = serverManager.config.web.root + url.dir.appendTrail('/') + (url.base || serverManager.config.web.defaultFile);
+					let url = path.parse(request.url);
+					let file =
+						serverManager.config.web.root
+						+ url.dir.appendTrail('/')
+						+ (url.base || serverManager.config.web.defaultFile);
 
 					fs.access(file, fs.R_OK, function(err)
 					{
@@ -81,7 +84,7 @@ module.exports = function(serverManager)
 
 						response.writeHead(
 							200,
-							{ 'Content-type': _mime[url.ext || '.html'] || 'application/octet-stream' }
+							{ 'Content-type': $mime[url.ext || '.html'] || 'application/octet-stream' }
 						);
 
 						fs.createReadStream(file).pipe(response);
@@ -95,10 +98,12 @@ module.exports = function(serverManager)
 					response.writeHead(404);
 					response.end();
 				}
+				return;
 			}
-			else if (request.method === 'POST' && !serverManager.config.web.disablePost)
+			
+			if (request.method === 'POST' && !serverManager.config.web.disablePost)
 			{
-				var queryData = [];
+				let queryData = [];
 
 				request.on(
 					'data',
@@ -117,10 +122,10 @@ module.exports = function(serverManager)
 				);
 
 				request.on('end', function() {
-					var inputData = queryData.join('');
-					var json = JSON.parse(inputData);
-					var buffer = {};
-					var appRequest = {
+					let inputData = queryData.join('');
+					let json = JSON.parse(inputData);
+					let buffer = {};
+					let appRequest = {
 						userId: json.userId,
 						action: json.action,
 						parameters: json.parameters,
@@ -139,7 +144,7 @@ module.exports = function(serverManager)
 						},
 						response: function(data, status)
 						{
-							var outputData = JSON.stringify({
+							let outputData = JSON.stringify({
 								userId: request.userId,
 								status: status || 'ok',
 								data: data || {}
@@ -172,13 +177,13 @@ module.exports = function(serverManager)
 						_listener(appRequest);
 					});
 				});
+
+				return;
 			}
-			else
-			{
-				serverManager.writeLog(serverManager.config.web.protocol, 405, request, startTime);
-				response.writeHead(405);
-				response.end();
-			}
+
+			serverManager.writeLog(serverManager.config.web.protocol, 405, request, startTime);
+			response.writeHead(405);
+			response.end();
 		}
 		catch (err)
 		{

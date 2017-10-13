@@ -1,7 +1,7 @@
 'use strict';
 
-const __boardSize = 30;
-const __defaultBoard = parseBoard(
+const $boardSize = 30;
+const $defaultBoard = parseBoard(
 	  '   oooo   |'
 	+ '   o  o   |'
 	+ '   o  o   |'
@@ -12,8 +12,8 @@ const __defaultBoard = parseBoard(
 	+ '   o  o   |'
 	+ '   o  o   |'
 	+ '   oooo   ');
-const __lineMax = 4;
-const __line = [
+const $lineMax = 4;
+const $line = [
 	 { x: -1, y: -1, reverse: 7 },
 	 { x: 0, y: -1, reverse: 6 },
 	 { x: 1, y: -1, reverse: 5 },
@@ -23,12 +23,12 @@ const __line = [
 	 { x: 0, y: 1, reverse: 1 },
 	 { x: 1, y: 1, reverse: 0 }
 ];
-const __moveChar = '0123456789abcdefghijklmnopqrstuvwxyz#-!%'.split('');
-const __highscoreLimit = 20;
+const $movechar = '0123456789abcdefghijklmnopqrstuvwxyz#-!%'.split('');
+const $highscoreLimit = 20;
 
-var _clone = require('clone');
-var _serverManager;
-var _highscores = [{
+let _clone = require('clone');
+let _serverManager;
+let _highscores = [{
 		name: 'Mikko',
 		date: new Date(2011, 10, 9),
 		moves: [],
@@ -51,26 +51,28 @@ exports.init = function(serverManager)
 
 	_highscores = _serverManager.cache('highscores');
 
-	for (var i = 0; i < _highscores.length; i++)
+	for (let i = 0; i < _highscores.length; i++)
 	{
 		_highscores[i].moves = parseMoves(_highscores[i].string);
 	}
 
+	_serverManager.cache('highscores', _highscores);
+
 	function parseMoves(str)
 	{
-		var moves = [];
+		let moves = [];
 
-		for (var i = 0; i < str.length; i += 5)
+		for (let i = 0; i < str.length; i += 5)
 		{
 			moves.push({
 				dot: 1,
-				x: __moveChar.indexOf(str.charAt(i)),
-				y: __moveChar.indexOf(str.charAt(i + 1))
+				x: $movechar.indexOf(str.charAt(i)),
+				y: $movechar.indexOf(str.charAt(i + 1))
 			});
 			moves.push({
-				x: __moveChar.indexOf(str.charAt(i + 2)),
-				y: __moveChar.indexOf(str.charAt(i + 3)),
-				dir: __moveChar.indexOf(str.charAt(i + 4))
+				x: $movechar.indexOf(str.charAt(i + 2)),
+				y: $movechar.indexOf(str.charAt(i + 3)),
+				dir: $movechar.indexOf(str.charAt(i + 4))
 			});
 		}
 
@@ -109,12 +111,12 @@ function onSubmit(request)
 		return;
 	}
 
-	var boardString = buildMovesString(request.parameters.moves);
-	var lineCount = parseInt(request.parameters.moves.length / 2);
-	var index = _highscores.length;
-	var message;
+	let boardString = buildMovesString(request.parameters.moves);
+	let lineCount = parseInt(request.parameters.moves.length / 2);
+	let index = _highscores.length;
+	let message;
 	
-	for (var i = 0; i < _highscores.length; i++)
+	for (let i = 0; i < _highscores.length; i++)
 	{
 		if (boardString == _highscores[i].string)
 		{
@@ -132,9 +134,9 @@ function onSubmit(request)
 	{
 		message = 'same-result';
 	}
-	else if (index < __highscoreLimit)
+	else if (index < $highscoreLimit)
 	{
-		var date = new Date();
+		let date = new Date();
 
 		_highscores.splice(
 				index,
@@ -147,7 +149,7 @@ function onSubmit(request)
 					string: boardString
 				}
 			);
-		_highscores = _highscores.slice(0, __highscoreLimit);
+		_highscores = _highscores.slice(0, $highscoreLimit);
 
 		_serverManager.cache('highscores', _highscores);
 
@@ -178,15 +180,15 @@ function checkSubmit(parameters)
 		return true;
 	}
 
-	var board = {
+	let board = {
 		lineCount: 0,
-		grid: _clone(__defaultBoard.grid)
+		grid: _clone($defaultBoard.grid)
 	};
-	var dot = true;
+	let dot = true;
 
-	for (var i = 0; i < parameters.moves.length; i++)
+	for (let i = 0; i < parameters.moves.length; i++)
 	{
-		var move = parameters.moves[i];
+		let move = parameters.moves[i];
 
 		if (dot)
 		{
@@ -217,12 +219,12 @@ function checkSubmit(parameters)
 			return true;
 		}
 
-		var x = parseInt(move.x);
-		var y = parseInt(move.y);
+		let x = parseInt(move.x);
+		let y = parseInt(move.y);
 
 		if (
-			isNaN(x) || x < 0 || x >= __boardSize
-			|| isNaN(y) || y < 0 || y >= __boardSize
+			isNaN(x) || x < 0 || x >= $boardSize
+			|| isNaN(y) || y < 0 || y >= $boardSize
 		)
 		{
 			return true;
@@ -244,28 +246,28 @@ function checkSubmit(parameters)
 			return true;
 		}
 
-		var x = parseInt(move.x);
-		var y = parseInt(move.y);
-		var direction = parseInt(move.dir);
+		let x = parseInt(move.x);
+		let y = parseInt(move.y);
+		let direction = parseInt(move.dir);
 
 		if (
-			isNaN(x) || x < 0 || x >= __boardSize
-			|| isNaN(y) || y < 0 || y >= __boardSize
+			isNaN(x) || x < 0 || x >= $boardSize
+			|| isNaN(y) || y < 0 || y >= $boardSize
 			|| isNaN(direction) || direction < 0 || direction > 7
 		)
 		{
 			return true;
 		}
 
-		var reverse = __line[direction].reverse;
-		var dx = __line[direction].x;
-		var dy = __line[direction].y;
-		var ix = x;
-		var iy = y;
+		let reverse = $line[direction].reverse;
+		let dx = $line[direction].x;
+		let dy = $line[direction].y;
+		let ix = x;
+		let iy = y;
 
-		for (var i = 0; i <= __lineMax; i++)
+		for (let i = 0; i <= $lineMax; i++)
 		{
-			if (ix < 0 || ix >= __boardSize || iy < 0 || iy >= __boardSize)
+			if (ix < 0 || ix >= $boardSize || iy < 0 || iy >= $boardSize)
 			{
 				return true;
 			}
@@ -273,7 +275,7 @@ function checkSubmit(parameters)
 			{
 				return true;
 			}
-			if (i !== __lineMax && board.grid[iy][ix][direction])
+			if (i !== $lineMax && board.grid[iy][ix][direction])
 			{
 				return true;
 			}
@@ -282,7 +284,7 @@ function checkSubmit(parameters)
 				return true;
 			}
 
-			if (i < __lineMax)
+			if (i < $lineMax)
 			{
 				board.grid[iy][ix][direction] = 1;
 			}
@@ -302,24 +304,24 @@ function checkSubmit(parameters)
 
 function parseBoard(input)
 {
-	var lines = input.split('|');
-	var output = {
-		grid: new Array(__boardSize),
+	let lines = input.split('|');
+	let output = {
+		grid: new Array($boardSize),
 		lineCount: 0
 	};
-	var y = __boardSize / 2 - parseInt(lines.length / 2 + 0.5);
+	let y = $boardSize / 2 - parseInt(lines.length / 2 + 0.5);
 
-	for (var i = 0; i < __boardSize; i++)
+	for (let i = 0; i < $boardSize; i++)
 	{
-		output.grid[i] = new Array(__boardSize);
+		output.grid[i] = new Array($boardSize);
 	}
 
-	for (var i = 0; i < lines.length; i++)
+	for (let i = 0; i < lines.length; i++)
 	{
-		var chars = lines[i].split('');
-		var x = __boardSize / 2 - parseInt(chars.length / 2 + 0.5);
+		let chars = lines[i].split('');
+		let x = $boardSize / 2 - parseInt(chars.length / 2 + 0.5);
 
-		for (var j = 0; j < chars.length; j++)
+		for (let j = 0; j < chars.length; j++)
 		{
 			if (chars[j] != ' ')
 			{
@@ -335,16 +337,16 @@ function parseBoard(input)
 
 function buildMovesString(moves)
 {
-	var str = [];
+	let str = [];
 
-	for (var i = 0; i < moves.length; i++)
+	for (let i = 0; i < moves.length; i++)
 	{
-		str.push(__moveChar[parseInt(moves[i].x)]);
-		str.push(__moveChar[parseInt(moves[i].y)]);
+		str.push($movechar[parseInt(moves[i].x)]);
+		str.push($movechar[parseInt(moves[i].y)]);
 
 		if (moves[i].dir != null)
 		{
-			str.push(__moveChar[parseInt(moves[i].dir)]);
+			str.push($movechar[parseInt(moves[i].dir)]);
 		}
 	}
 
