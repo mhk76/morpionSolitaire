@@ -1,99 +1,109 @@
-let fs = require('fs');
+const $fs = require('fs');
+
+const Promise = require('./promise.js');
 
 require('./prototypes.js');
 
+const $stateInitial = 0x00;
+const $stateData = 0x01;
+const $stateCache = 0x02;
+const $stateWebServer = 0x04;
+const $stateLoaded = 0x07;
+
 module.exports = function(config)
 {
-	let _this = this;
+	let _module = this;
 	let _cache = {};
 	let _altered = true;
 	let _mongodb;
+	let _startState = $stateInitial;
 
-	_this.config = config || {};
+	_module.config = config || {};
 
-	_this.config.app = _this.config.app || {};
-	_this.config.app.file = _this.config.app.file || './app/app.js';
-	_this.config.app.watchModules = (_this.config.app.watchModules == true);
+	_module.config.app = _module.config.app || {};
+	_module.config.app.file = _module.config.app.file || './app/app.js';
+	_module.config.app.watchModules = (_module.config.app.watchModules == true);
 
-	_this.config.web = _this.config.web || {};
-	_this.config.web.root = (_this.config.web.root || './web/').appendTrail('/');
-	_this.config.web.defaultFile = _this.config.web.defaultFile || 'index.html';
-	_this.config.web.protocol = _this.config.web.protocol || 'http';
-	_this.config.web.port = _this.config.web.port || 80;
-	_this.config.web.postBlockLimit = _this.config.web.postBlockLimit || 1e5;
-	_this.config.web.webSockets = (_this.config.web.webSockets == true);
+	_module.config.web = _module.config.web || {};
+	_module.config.web.root = (_module.config.web.root || './web/').appendTrail('/');
+	_module.config.web.defaultFile = _module.config.web.defaultFile || 'index.html';
+	_module.config.web.protocol = _module.config.web.protocol || 'http';
+	_module.config.web.port = _module.config.web.port || 80;
+	_module.config.web.postBlockLimit = _module.config.web.postBlockLimit || 1e5;
+	_module.config.web.webSockets = (_module.config.web.webSockets == true);
 
-	_this.config.cache = _this.config.cache || {}
-	_this.config.cache.format = _this.config.cache.format || 'file';
-	_this.config.cache.file = _this.config.cache.file || './cache.json';
-	_this.config.cache.interval = (_this.config.cache.interval || 60) * 1000; // ms
+	_module.config.cache = _module.config.cache || {}
+	_module.config.cache.format = _module.config.cache.format || 'file';
+	_module.config.cache.file = _module.config.cache.file || './cache.json';
+	_module.config.cache.interval = (_module.config.cache.interval || 60) * 1000; // ms
 
-	_this.config.log = _this.config.log || {};
-	_this.config.log.format = _this.config.log.format || 'file';
-	_this.config.log.path = (_this.config.log.path || './log/').appendTrail('/');
+	_module.config.log = _module.config.log || {};
+	_module.config.log.format = _module.config.log.format || 'file';
+	_module.config.log.path = (_module.config.log.path || './log/').appendTrail('/');
 
-	let _app = require(_this.config.app.file);
+	let _app = require(_module.config.app.file);
+	let _starting = Promise()
+		.success(function(state)
+		{
+			_startState |= state;
 
-	if (_this.config.log.format === 'mongodb' || _this.config.cache.format === 'mongodb')
+			if (state === $stateData)
+			{
+				initCache();
+			}
+			if (state === $stateCache && _module.config.cache.interval != null)
+			{
+				setCacheInterval();
+			}
+			if (_startState === $stateLoaded)
+			{
+				_app.init(_module);
+				console.log('ServerManager - app started');
+			}
+		});
+
+	if (_module.config.log.format === 'mongodb' || _module.config.cache.format === 'mongodb')
 	{
 		// TODO: mongodb - require
+		_starting.resolve($stateData);
 	}
-
-	if (_this.config.log.format === 'mysql' || _this.config.cache.format === 'mysql')
+	else if (_module.config.log.format === 'mysql' || _module.config.cache.format === 'mysql')
 	{
-		// TODO: mysql - require
-	}
+		_module.mysql = require('./mysql.js')(_module.config.mysql);
 
-	if (_this.config.cache.interval != null)
-	{
-
-		if (_this.config.cache.format === 'mongodb')
-		{
-			// TODO: mongodb - read cache
-		}
-		else if (_this.config.cache.format === 'mysql')
-		{
-			// TODO: mysql - read cache
-		}
-		else if (fs.existsSync(_this.config.cache.file))
-		{
-			_cache = JSON.parse(fs.readFileSync(_this.config.cache.file, 'utf8'));
-		}
-
-		setInterval(
-			function()
+		console.log('ServerManager - MySql connected');
+		
+		_module.mysql.verifyTable(
+				'log',
+				{
+					'log_id': 'BIGINT NOT NULL AUTO_INCREMENT',
+					'protocol': 'VARCHAR(20) NULL',
+					'status': 'VARCHAR(50) NULL',
+					'duration': 'INT NULL',
+					'url': 'VARCHAR(255) NULL',
+					'method': 'VARCHAR(50) NULL',
+					'ip': 'VARCHAR(40) NULL',
+					'input': 'INT NULL',
+					'output': 'INT NULL',
+					'error': 'MEDIUMTEXT NULL'
+				},
+				['log_id']
+			)
+			.success(function()
 			{
-				if (_app.saveCache)
-				{
-					_app.saveCache();
-				}
-
-				if (_altered)
-				{
-					if (_this.config.cache.format === 'mongodb')
-					{
-						// TODO: mongodb - write cache
-					}
-					else if (_this.config.cache.format === 'mysql')
-					{
-						// TODO: mysql - write cache
-					}
-					else
-					{
-						fs.writeFile(
-							_this.config.cache.file,
-							JSON.stringify(_cache),
-							{ encoding: 'utf8' }
-						);
-						_altered = false;
-					}
-				}
-			},
-			_this.config.cache.interval
-		);
+				_starting.resolve($stateData);
+			})
+			.fail(function(error)
+			{
+				throw(error);
+			});
+	}
+	else
+	{
+		_starting.resolve($stateData);
 	}
 
-	_this.initCache = function(section, defaultData)
+	_module.initCache = function(section, defaultData)
 	{
 		if (!section)
 		{
@@ -109,7 +119,7 @@ module.exports = function(config)
 		}
 	};
 
-	_this.cache = function(section, data)	
+	_module.cache = function(section, data)	
 	{
 		if (!section)
 		{
@@ -136,13 +146,13 @@ module.exports = function(config)
 		_cache[section].altered = true;
 	};
 
-	_this.writeLog = function(protocol, status, request, startTime, err)
+	_module.writeLog = function(protocol, status, request, startTime, err)
 	{
 		let duration = new Date().getTime() - (startTime || new Date().getTime());
 
 		if (duration > 100)
 		{
-			console.log('slow action: ', protocol, duration)
+			console.log('slow action: ', protocol, duration);
 		}
 
 		request = request || {};
@@ -182,20 +192,20 @@ module.exports = function(config)
 			data['output'] = request.outputDataLength;
 		}
 
-		if (_this.config.log.format === 'mongodb')
+		if (_module.config.log.format === 'mongodb')
 		{
 			// TODO: mongodb 
 		}
-		else if (_this.config.log.format === 'mysql')
+		else if (_module.config.log.format === 'mysql')
 		{
-			// TODO: mysql 
+			_module.mysql.insert('log', data);
 		}
 		else
 		{
 			let date = new Date();
 
-			fs.appendFile(
-				_this.config.log.path + date.getFullYear() + '-' + (date.getMonth() + 1).leftPad(2, '0') + '-' + date.getDate().leftPad(2, '0') + '.log',
+			$fs.appendFile(
+				_module.config.log.path + date.getFullYear() + '-' + (date.getMonth() + 1).leftPad(2, '0') + '-' + date.getDate().leftPad(2, '0') + '.log',
 				JSON.stringify(data) + '\n',
 				{ encoding: 'utf8' },
 				function() {}
@@ -203,7 +213,7 @@ module.exports = function(config)
 		}
 	};
 
-	_this.restartApp = function()
+	_module.restartApp = function()
 	{
 		console.log('Recycling modules...');
 
@@ -217,26 +227,26 @@ module.exports = function(config)
 			);
 		}
 
-		delete require.cache[require.resolve(_this.config.app.file)];
+		delete require.cache[require.resolve(_module.config.app.file)];
 
-		_app = require(_this.config.app.file);
-		_app.init(_this);
+		_app = require(_module.config.app.file);
+		_app.init(_module);
 	};
 
-	_this.setListener = function(callback)
+	_module.setListener = function(callback)
 	{
-		_this.webServer.setListener(callback);
-		if (_this.webSocket)
+		_module.webServer.setListener(callback);
+		if (_module.webSocket)
 		{
-			_this.webSocket.setListener(callback);
+			_module.webSocket.setListener(callback);
 		}
 	}
 
 
-	if (_this.config.watchModules)
+	if (_module.config.watchModules)
 	{
 		let restartTimer = null;
-		let modules = [_this.config.app.file];
+		let modules = [_module.config.app.file];
 
 		if (_app.subModules)
 		{
@@ -244,7 +254,7 @@ module.exports = function(config)
 		}
 
 		modules.forEach(function(item) {
-			fs.watch(item, { persistent: true }, function()
+			$fs.watch(item, { persistent: true }, function()
 			{
 				if (restartTimer === null)
 				{
@@ -253,7 +263,7 @@ module.exports = function(config)
 				restartTimer = setTimeout(
 					function()
 					{
-						_this.restartApp();
+						_module.restartApp();
 						restartTimer = null;
 					},
 					100
@@ -263,19 +273,131 @@ module.exports = function(config)
 	}
 
 
-	let webServer = require('./webServer.js');
+	_module.webServer = new require('./webServer.js')(_module);
 
-	_this.webServer = new webServer(_this);
+	_module.webServer.loading
+		.success(function()
+		{
+			if (_module.config.web.webSockets)
+			{
+				_module.webSocket = new require('./webSocket.js')(_module);
+			}
 
-	if (_this.config.web.webSockets)
+			_starting.resolve($stateWebServer);
+		});
+
+
+	function initCache()
 	{
-		let webSocket = require('./webSocket.js');
+		if (_module.config.cache.format === 'mongodb')
+		{
+			// TODO: mongodb - read cache
+			_starting.resolve($stateCache);
+		}
+		else if (_module.config.cache.format === 'mysql')
+		{
+			_module.mysql.verifyTable(
+					'cache',
+					{
+						'section': 'VARCHAR(255) NOT NULL',
+						'data': 'MEDIUMTEXT'
+					},
+					['section']
+				)
+				.success(function()
+				{
+					_module.mysql.query(
+							'SELECT section, data FROM cache'
+						)
+						.success(function(data)
+						{
+							for (let r = 0; r < data.result.length; r++)
+							{
+								_cache[data.result[r].section] = {
+									altered: false,
+									data: JSON.parse(data.result[r].data)
+								};
+							}
 
-		_this.webSocket = new webSocket(_this);
-	}
-	
+							console.log('ServerManager - cache loaded');
 
-	_app.init(_this);
+							_starting.resolve($stateCache);
+						})
+						.fail(function(error)
+						{
+							throw('Unabled to read cache');
+						});
+				})
+				.fail(function(error)
+				{
+					throw(error);
+				});
+		}
+		else if ($fs.existsSync(_module.config.cache.file))
+		{
+			_cache = JSON.parse($fs.readFileSync(_module.config.cache.file, 'utf8'));
+			_starting.resolve($stateCache);
+			console.log('ServerManager - cache loaded');
+		}
+		else
+		{
+			_starting.resolve($stateCache);
+		}
+	} // initCache()
 
-	console.log('ServerManager - started');
+	function setCacheInterval()
+	{
+		setInterval(
+			function()
+			{
+				if (_app.saveCache)
+				{
+					_app.saveCache();
+				}
+
+				if (_altered)
+				{
+					if (_module.config.cache.format === 'mongodb')
+					{
+						// TODO: mongodb - write cache
+					}
+					else if (_module.config.cache.format === 'mysql')
+					{
+						let sql = ['REPLACE LOW_PRIORITY INTO cache VALUES ']
+						let list = []
+
+						for (let c in _cache)
+						{
+							list.push([
+								'(\'',
+								c,
+								'\', ',
+								_module.mysql.encode(JSON.stringify(_cache[c].data)),
+								')'
+							].join(''));
+						}
+
+						sql.push(list.join(', '));
+
+						_module.mysql.query(sql.join(''))
+							.fail(function(error)
+							{
+								console.log(error)
+							});
+					}
+					else
+					{
+						$fs.writeFile(
+							_module.config.cache.file,
+							JSON.stringify(_cache),
+							{ encoding: 'utf8' }
+						);
+						_altered = false;
+					}
+				}
+			},
+			_module.config.cache.interval
+		);
+	} // setCacheInterval()
+
 };

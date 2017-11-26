@@ -26,7 +26,15 @@ const $line = [
 const $movechar = '0123456789abcdefghijklmnopqrstuvwxyz#-!%'.split('');
 const $highscoreLimit = 20;
 
-let _clone = require('clone');
+let _clone = function (data)
+	{
+		return new Cloner(data).clone;
+
+		function Cloner(data)
+		{
+			this.clone = data;
+		}
+	};
 let _serverManager;
 let _highscores = [{
 		name: 'Mikko',

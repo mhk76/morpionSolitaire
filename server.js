@@ -13,12 +13,18 @@ require('./serverManager.js')({
 		"webSockets": true,
 		"disablePost": false
 	},
+	"mysql": {
+		"host": "localhost",
+		"user": "",
+		"password": "",
+		"database": "morpion_solitaire"
+	},
 	"log": {
-		"format": "file",
+		"format": "mysql",
 		"path": "./log/"
 	},
 	"cache": {
-		"format": "file",
+		"format": "mysql",
 		"file": "./cache.json",
 		"interval": 60
 	}

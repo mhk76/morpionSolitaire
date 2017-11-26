@@ -1,4 +1,6 @@
-let ws = require('ws');
+const $ws = require('ws');
+
+const Uuidv1 = require('uuid/v1');
 
 module.exports = function(serverManager)
 {
@@ -9,7 +11,7 @@ module.exports = function(serverManager)
 			request.response({}, 'ok');
 		};
 
-	(new ws.Server({ server: serverManager.webServer }))
+	(new $ws.Server({ server: serverManager.webServer }))
 		.on('connection', function(webSocket)
 		{
 			webSocket
@@ -57,53 +59,53 @@ module.exports = function(serverManager)
 
 								appRequest.outputDataLength = outputData.length;
 
-								serverManager.writeLog('ws', 'response', appRequest, startTime);
+								serverManager.writeLog('$ws', 'response', appRequest, startTime);
 
 								webSocket.send(outputData);
 							},
 							terminate: function()
 							{
-								serverManager.writeLog('ws', 'terminate-force', appRequest, startTime);
+								serverManager.writeLog('$ws', 'terminate-force', appRequest, startTime);
 								webSocket.terminate();
 							}
 						};
 					}
 					catch (err)
 					{
-						serverManager.writeLog('ws', 'error', appRequest, startTime, err);
+						serverManager.writeLog('$ws', 'error', appRequest, startTime, err);
 						webSocket.terminate();
 						return;
 					}
 
 					if (!appRequest.requestId)
 					{
-						serverManager.writeLog('ws', 'missing-requestId', appRequest, startTime);
+						serverManager.writeLog('$ws', 'missing-requestId', appRequest, startTime);
 						webSocket.terminate();
 						return;
 					}
 					if (!appRequest.action)
 					{
-						serverManager.writeLog('ws', 'missing-action', appRequest, startTime);
+						serverManager.writeLog('$ws', 'missing-action', appRequest, startTime);
 						webSocket.terminate();
 						return;
 					}
-					if (!appRequest.userId)
-					{
-						appRequest.userId = Math.random().toString().substr(2) + Math.random().toString().substr(1); 
-					}
 					if (webSocket.userId && webSocket.userId !== appRequest.userId)
 					{
-						serverManager.writeLog('ws', 'invalid-userId', appRequest, startTime);
+						serverManager.writeLog('$ws', 'invalid-userId', appRequest, startTime);
 						webSocket.terminate();
 						delete _webSockets[webSocket.userId];
 						return;
 					}
 					
+					if (!appRequest.userId)
+					{
+						appRequest.userId = uuidv1(); 
+					}
 					webSocket.userId = appRequest.userId;
 
 					if (_webSockets[webSocket.userId] && _webSockets[webSocket.userId].webSocket !== webSocket)
 					{
-						serverManager.writeLog('ws', 'terminate-old', appRequest, startTime);
+						serverManager.writeLog('$ws', 'terminate-old', appRequest, startTime);
 						_webSockets[webSocket.userId].webSocket.terminate();
 					}
 

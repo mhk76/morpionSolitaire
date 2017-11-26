@@ -1,7 +1,9 @@
-let http = require('http');
-let https = require('https');
-let fs = require('fs');
-let path = require('path');
+const $http = require('http');
+const $https = require('https');
+const $fs = require('fs');
+const $path = require('path');
+
+const Promise = require('./promise.js');
 
 const $mime = {
 	'.html': 'text/html',
@@ -25,10 +27,10 @@ module.exports = function(serverManager)
 
 	if (serverManager.config.web.protocol === 'https')
 	{
-		_server = https.createServer(
+		_server = $https.createServer(
 			{
-				key: fs.readFileSync(serverManager.config.web.httpsKeyFile),
-				cert: fs.readFileSync(serverManager.config.web.httpsCertFile)
+				key: $fs.readFileSync(serverManager.config.web.httpsKeyFile),
+				cert: $fs.readFileSync(serverManager.config.web.httpsCertFile)
 			},
 			HttpListener
 		);
@@ -36,15 +38,18 @@ module.exports = function(serverManager)
 	}
 	else
 	{
-		_server = http.createServer(HttpListener);
+		_server = $http.createServer(HttpListener);
 		_port = process.env.PORT || serverManager.config.web.port || 80;
 	}
+
+	_server.loading = Promise();
 
 	_server.listen(
 		_port,
 		function()
 		{
 			serverManager.writeLog(serverManager.config.web.protocol, 'starting');
+			_server.loading.resolve();
 			console.log('WebServer - listening to port ' + _port);
 		}
 	);
@@ -66,13 +71,13 @@ module.exports = function(serverManager)
 			{
 				try
 				{
-					let url = path.parse(request.url);
+					let url = $path.parse(request.url);
 					let file =
 						serverManager.config.web.root
 						+ url.dir.appendTrail('/')
 						+ (url.base || serverManager.config.web.defaultFile);
 
-					fs.access(file, fs.R_OK, function(err)
+					$fs.access(file, $fs.R_OK, function(err)
 					{
 						if (err)
 						{
@@ -87,7 +92,7 @@ module.exports = function(serverManager)
 							{ 'Content-type': $mime[url.ext || '.html'] || 'application/octet-stream' }
 						);
 
-						fs.createReadStream(file).pipe(response);
+						$fs.createReadStream(file).pipe(response);
 
 						serverManager.writeLog(serverManager.config.web.protocol, 200, request, startTime);
 					});

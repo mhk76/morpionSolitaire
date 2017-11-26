@@ -1,16 +1,22 @@
 {
 	"name": "morpion-solitaire",
-	"version": "1.0.0",
+	"version": "1.1.0",
 	"description": "Morpion solitaire game",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/mhk76/morpionSolitaire"
+	},
 	"main": "server.js",
 	"scripts": {
-		"start": "node server.js" 
+		"start": "node server.js"
 	},
 	"dependencies": {
-		"ws": "latest",
-		"node-clone": "latest"
+		"mysql": "^2.15.0",
+		"sqlstring": "^2.3.0",
+		"uuid": "^3.1.0",
+		"ws": "^3.3.2"
 	},
 	"author": "Mikko Karhunen <mikko.karhunen@iki.fi>",
-	"license": "UNLICENSED",
-	"private": true
+	"license": "MIT",
+	"private": false
 }
