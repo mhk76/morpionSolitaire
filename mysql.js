@@ -1,35 +1,37 @@
-const mysql = require('mysql');
-const sqlstring = require('sqlstring');
+const $mysql = require('mysql');
+const $sqlstring = require('sqlstring');
 const Promise = require('./promise.js');
 
 module.exports = function(config)
 {
 	let _connection
+	let _module = { starting: new Promise() };
 
 	try
 	{
-		_connection = mysql.createConnection(config);
+		_connection = $mysql.createConnection(config);
 		_connection.connect(function(error)
-		{
-			if (error)
 			{
-				throw('Unabled to connect MySql:' + error);
-			}
-		});
+				if (error)
+				{
+					_module.starting.reject(error.sqlMessage);
+					return;
+				}
+				_module.starting.resolve();
+			});
 	}
 	catch (exception)
 	{
-		throw('Unabled to initialize MySql:' + exception);
+		_module.starting.reject(exception);
 	}
 	
-	let _module = {
-		query: function(sql, parameters)
+	_module.query = function(sql, parameters)
 		{
-			let promise = Promise();
+			let promise = new Promise();
 
 			for (let p in parameters)
 			{
-				sql = sql.replace('@' + p, sqlstring.escape(parameters[p]));
+				sql = sql.replace('@' + p, $sqlstring.escape(parameters[p]));
 			}
 
 			setTimeout(function() {
@@ -40,7 +42,7 @@ module.exports = function(config)
 					{
 						if (error)
 						{
-							promise.reject(error);
+							promise.reject(error.sqlMessage);
 							return;
 						}
 						promise.resolve({
@@ -52,10 +54,11 @@ module.exports = function(config)
 			});
 			
 			return promise;
-		},
-		verifyTable: function(name, columns, primaryKey)
+		};
+
+	_module.verifyTable = function(name, columns, primaryKey)
 		{
-			let promise = Promise();
+			let promise = new Promise();
 
 			_module.query(
 					'SELECT column_name FROM information_schema.columns WHERE table_name = @name;',
@@ -122,24 +125,26 @@ module.exports = function(config)
 				});
 
 			return promise;
-		},
-		insert: function (tableName, data)
+		};
+
+	_module.insert = function (tableName, data)
 		{
 			return _module.query(
 				generateInsertSql('INSERT INTO ', tableName, data)
 			);
-		},
-		replace: function (tableName, data)
+		};
+
+	_module.replace = function (tableName, data)
 		{
 			return _module.query(
 				generateInsertSql('REPLACE INTO ', tableName, data)
 			);
-		},
-		encode: function(data)
+		};
+
+	_module.encode = function(data)
 		{
-			return sqlstring.escape(data);
-		}
-	};
+			return $sqlstring.escape(data);
+		};
 
 	return _module;
 
@@ -190,7 +195,7 @@ module.exports = function(config)
 
 			for (let d in data)
 			{
-				list.push(sqlstring.escape(data[d]));
+				list.push($sqlstring.escape(data[d]));
 			}
 
 			return list.join(', ');

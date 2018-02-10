@@ -11,6 +11,7 @@
 		"start": "node server.js"
 	},
 	"dependencies": {
+		"mongoose": "^4.13.5",
 		"mysql": "^2.15.0",
 		"sqlstring": "^2.3.0",
 		"uuid": "^3.1.0",

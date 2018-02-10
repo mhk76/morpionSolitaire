@@ -15,11 +15,11 @@ const $mime = {
 	'.gif': 'image/gif'
 };
 
-module.exports = function(serverManager)
+module.exports = (serverManager) =>
 {
 	let _server;
 	let _port;
-	let _listener = function(request)
+	let _listener = (request) =>
 		{
 			console.log('default POST listener', request);
 			request.response({}, 'ok');
@@ -42,11 +42,11 @@ module.exports = function(serverManager)
 		_port = process.env.PORT || serverManager.config.web.port || 80;
 	}
 
-	_server.loading = Promise();
+	_server.loading = new Promise();
 
 	_server.listen(
 		_port,
-		function()
+		() =>
 		{
 			serverManager.writeLog(serverManager.config.web.protocol, 'starting');
 			_server.loading.resolve();
@@ -54,7 +54,7 @@ module.exports = function(serverManager)
 		}
 	);
 
-	_server.setListener = function(callback)
+	_server.setListener = (callback) =>
 	{
 		_listener = callback;
 	};
@@ -77,7 +77,7 @@ module.exports = function(serverManager)
 						+ url.dir.appendTrail('/')
 						+ (url.base || serverManager.config.web.defaultFile);
 
-					$fs.access(file, $fs.R_OK, function(err)
+					$fs.access(file, $fs.R_OK, (err) =>
 					{
 						if (err)
 						{
@@ -110,26 +110,156 @@ module.exports = function(serverManager)
 			{
 				let queryData = [];
 
-				request.on(
-					'data',
-					function(data)
+				request.on('data', (data) =>
+				{
+					queryData.push(data);
+					if (queryData.length > serverManager.config.web.postBlockLimit)
 					{
-						queryData.push(data);
-						if (queryData.length > serverManager.config.web.postBlockLimit)
-						{
-							queryData = "";
-							serverManager.writeLog(serverManager.config.web.protocol, 404, request, startTime, err);
-							response.writeHead(413);
-							response.end();
-							request.connection.destroy();
-						}
+						queryData = "";
+						serverManager.writeLog(serverManager.config.web.protocol, 413, request, startTime, err);
+						response.writeHead(413);
+						response.end();
+						request.connection.destroy();
 					}
-				);
+				});
 
-				request.on('end', function() {
+				request.on('end', () =>
+				{
 					let inputData = queryData.join('');
-					let json = JSON.parse(inputData);
+					let json;
 					let buffer = {};
+
+					try
+					{
+						json = JSON.parse(inputData);						
+					}
+					catch (exception)
+					{
+						let appRequest = {
+							inputDataLength: inputData.length,
+							connection:
+							{
+								remoteAddress: request.connection.remoteAddress
+							}
+						};
+
+						response.writeHead(400);
+						response.end();
+						request.connection.destroy();
+
+						serverManager.writeLog(serverManager.config.web.protocol, 400, appRequest, startTime, exception);
+						return;
+					}
+
+					if (json.queue)
+					{
+						let promises = json.queue.map((item, index) =>
+						{
+							let promise = new Promise();
+
+							if (buffer[item.action] && buffer[item.action].parameters.equals(item.parameters)){
+								promise.resolve(buffer[item.action].response);
+								if (!buffer[item.action].isPermanent){
+									delete buffer[item.action];
+								}
+								return;
+							}
+
+							setTimeout(() =>
+							{
+								_listener({
+									userId: json.userId,
+									action: item.action,
+									parameters: item.parameters,
+									inputDataLength: inputData.length,
+									connection:
+									{
+										remoteAddress: request.connection.remoteAddress
+									},
+									buffer: (action, parameters, response, isPermanent) =>
+									{
+										buffer[action] = {
+											parameters: parameters || {},
+											response: response || {},
+											isPermanent: isPermanent || false
+										};
+									},
+									response: (data, status) =>
+									{
+										promise.resolve({
+											queueId: item.queueId || index,
+											status: status || 'ok',
+											data: data || {}
+										});
+									},
+									terminate: () =>
+									{							
+										let appRequest = {
+											action: item.action,
+											parameters: item.parameters,
+											inputDataLength: inputData.length,
+											connection:
+											{
+												remoteAddress: request.connection.remoteAddress
+											}
+										};
+
+										response.writeHead(400);
+										response.end();
+			
+										serverManager.writeLog(serverManager.config.web.protocol, 400, appRequest, startTime);
+									}
+								});
+							});
+
+							return promise;
+						});
+
+						let responseData = {};
+
+						promises.forEach((promise, index) =>
+						{
+							promise.then((data) =>
+							{
+								responseData[data.queueId || index] = data;
+							});
+						});
+						
+						Promise.all(promises).then(() =>
+						{
+							let outputData = JSON.stringify({
+								userId: request.userId,
+								queue: responseData
+							});
+
+							if (Object.keys(buffer).length > 0)
+							{
+								outputData['buffer'] = buffer;
+							}
+
+							let appRequest = {
+								action: json.queue.map((item) =>
+									{
+										return item.action;
+									}).join(' '),
+								inputDataLength: inputData.length,
+								outputDataLength: outputData.length,
+								connection:
+								{
+									remoteAddress: request.connection.remoteAddress
+								}
+							};
+
+							response.writeHead(200, { 'Content-Type': 'application/json' });
+							response.write(outputData);
+							response.end();
+
+							serverManager.writeLog(serverManager.config.web.protocol, 200, appRequest, startTime);
+						});
+
+						return;
+					} // json.queue
+
 					let appRequest = {
 						userId: json.userId,
 						action: json.action,
@@ -139,7 +269,7 @@ module.exports = function(serverManager)
 						{
 							remoteAddress: request.connection.remoteAddress
 						},
-						buffer: function(action, parameters, response, isPermanent)
+						buffer: (action, parameters, response, isPermanent) =>
 						{
 							buffer[action] = {
 								parameters: parameters || {},
@@ -147,7 +277,7 @@ module.exports = function(serverManager)
 								isPermanent: isPermanent || false
 							};
 						},
-						response: function(data, status)
+						response: (data, status) =>
 						{
 							let outputData = JSON.stringify({
 								userId: request.userId,
@@ -168,7 +298,7 @@ module.exports = function(serverManager)
 
 							serverManager.writeLog(serverManager.config.web.protocol, 200, appRequest, startTime);
 						},
-						terminate: function()
+						terminate: () =>
 						{							
 							response.writeHead(400);
 							response.end();
@@ -177,7 +307,7 @@ module.exports = function(serverManager)
 						}
 					};
 
-					setTimeout(function()
+					setTimeout(() =>
 					{
 						_listener(appRequest);
 					});

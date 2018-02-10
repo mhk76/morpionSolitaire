@@ -1,4 +1,4 @@
-require('./serverManager.js')({
+{
 	"app": {
 		"file": "./app/app.js",
 		"watchModules": true,
@@ -31,4 +31,4 @@ require('./serverManager.js')({
 		"file": "./cache.json",
 		"interval": 60
 	}
-});
+}

@@ -1,73 +1,127 @@
-module.exports = function()
+module.exports = function Promise()
 {
-	let promise = {
-		resolved: false,
-		failed: false,
-		then: function(successCallback, failCallback) {
-			promise.successCallback = successCallback;
-			promise.failCallback = failCallback;
+	let promise = this;
 
-			if (promise.failed)
-			{
-				failCallback(promise.error);
-				return promise;
-			}
-			if (promise.resolved)
-			{
-				successCallback(promise.result);
-			}
+	promise.resolved = false
+	promise.failed = false;
 
-			return promise;
-		},
-		success: function(callback) {
-			promise.successCallback = callback;
+	promise.then = (successCallback, failCallback) =>
+	{
+		promise.successCallback = successCallback;
+		promise.failCallback = failCallback;
 
-			if (promise.failed)
-			{
-				return promise;
-			}
-			if (promise.resolved)
-			{
-				callback(promise.result);
-			}
-
-			return promise;
-		},
-		fail: function(callback) {
-			promise.failCallback = callback;
-
-			if (promise.failed)
-			{
-				callback(promise.error);
-			}
-
-			return promise;
-		},
-		resolve: function(data)
+		if (promise.failed)
 		{
-			promise.resolved = true;
-			promise.failed = false;
-			promise.result = data;
-			delete promise.error;
-
-			if (promise.successCallback)
-			{
-				promise.successCallback(data);
-			}
-		},
-		reject: function(error)
+			failCallback(promise.error);
+			return promise;
+		}
+		if (promise.resolved)
 		{
-			promise.resolved = false;
-			promise.failed = true;
-			delete promise.result;
-			promise.error = error;
+			successCallback(promise.result);
+		}
 
-			if (promise.failCallback)
-			{
-				promise.failCallback(error);
-			}
+		return promise;
+	};
+
+	promise.success = (callback) =>
+	{
+		promise.successCallback = callback;
+
+		if (promise.failed)
+		{
+			return promise;
+		}
+		if (promise.resolved)
+		{
+			callback(promise.result);
+		}
+
+		return promise;
+	};
+
+	promise.fail = (callback) =>
+	{
+		promise.failCallback = callback;
+
+		if (promise.failed)
+		{
+			callback(promise.error);
+		}
+
+		return promise;
+	};
+
+	promise.resolve = (data) =>
+	{
+		promise.resolved = true;
+		promise.failed = false;
+		promise.result = data;
+		delete promise.error;
+
+		if (promise.successCallback)
+		{
+			promise.successCallback(data);
+		}
+		if (promise.allCallback)
+		{
+			promise.allCallback();
 		}
 	};
 
-	return promise;
+	promise.reject = (error) =>
+	{
+		promise.resolved = false;
+		promise.failed = true;
+		delete promise.result;
+		promise.error = error;
+
+		if (promise.failCallback)
+		{
+			promise.failCallback(error);
+		}
+		if (promise.allCallback)
+		{
+			promise.allCallback();
+		}
+	};
+
+	Promise.all = (list) =>
+	{
+		let all = {
+			count: list.length,
+			then: (callback) =>
+			{
+				if (all.count === 0)
+				{
+					callback();
+					return;
+				}
+
+				all.callback = callback;
+			}
+		};
+
+		list.forEach((promise) => {
+			if (promise.resolved || promise.failed)
+			{
+				--all.count;
+				if (all.count === 0)
+				{
+					all.callback();
+				}
+				return;
+			}
+			promise.allCallback = () =>
+			{
+				--all.count;
+				if (all.count === 0)
+				{
+					all.callback();
+				}
+			};
+		});
+
+		return all;
+	};
+
 };

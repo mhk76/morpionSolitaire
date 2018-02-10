@@ -99,7 +99,7 @@ module.exports = function(serverManager)
 					
 					if (!appRequest.userId)
 					{
-						appRequest.userId = uuidv1(); 
+						appRequest.userId = Uuidv1(); 
 					}
 					webSocket.userId = appRequest.userId;
 
