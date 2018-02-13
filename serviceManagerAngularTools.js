@@ -1,4 +1,4 @@
-angular.module('Tools', [])
+angular.module('ServiceManagerAngularTools', [])
 .service('dictionary', function($q, $http, $rootScope)
 {
 	var _service = this;
@@ -59,24 +59,24 @@ angular.module('Tools', [])
 		{
 			dateStr = dateStr.replace('%yyyy', date.getFullYear());
 			dateStr = dateStr.replace('%yy', date.getYear());
-			dateStr = dateStr.replace('%dd', day.leftPad(2, '0'));
+			dateStr = dateStr.replace('%dd', leftPad(day, 2, '0'));
 			dateStr = dateStr.replace('%d', day);
-			dateStr = dateStr.replace('%mm', month.leftPad(2, '0'));
+			dateStr = dateStr.replace('%mm', leftPad(month, 2, '0'));
 			dateStr = dateStr.replace('%m', month);
-			dateStr = dateStr.replace('%hh', hours.leftPad(2, '0'));
+			dateStr = dateStr.replace('%hh', leftPad(hours, 2, '0'));
 			dateStr = dateStr.replace('%h', hours);
-			dateStr = dateStr.replace('%nn', minutes.leftPad(2, '0'));
+			dateStr = dateStr.replace('%nn', leftPad(minutes, 2, '0'));
 			dateStr = dateStr.replace('%n', minutes);
 		}
 		else
 		{
 			dateStr = dateStr.replace('%yyyy', date.getFullYear());
 			dateStr = dateStr.replace('%yy', date.getYear());
-			dateStr = dateStr.replace('%mm', month.leftPad(2, '0'));
+			dateStr = dateStr.replace('%mm', leftPad(month, 2, '0'));
 			dateStr = dateStr.replace('%m', month);
-			dateStr = dateStr.replace('%dd', day.leftPad(2, '0'));
+			dateStr = dateStr.replace('%dd', leftPad(day, 2, '0'));
 			dateStr = dateStr.replace('%d', day);
-			dateStr = dateStr.replace('%nn', minutes.leftPad(2, '0'));
+			dateStr = dateStr.replace('%nn', leftPad(minutes, 2, '0'));
 			dateStr = dateStr.replace('%n', minutes);
 			if (hours >= 12)
 			{
@@ -88,7 +88,7 @@ angular.module('Tools', [])
 				dateStr = dateStr.replace('%a', 'AM');
 			}
 			hours = (hours === 0 ? 12 : hours);
-			dateStr = dateStr.replace('%hh', hours.leftPad(2, '0'));
+			dateStr = dateStr.replace('%hh', leftPad(hours, 2, '0'));
 			dateStr = dateStr.replace('%h', hours);
 		}
 
@@ -131,6 +131,20 @@ angular.module('Tools', [])
 				throw 'Failed to load dictionary';
 			}
 		);
+
+	function leftPad(number, length, padChar)
+	{
+		var output = number.toString();
+
+		if (output.length < length)
+		{
+			return (padChar || '0').toString().substr(0, 1).repeat(length - output.length) + output;
+		}
+
+		return output.slice(-length);
+	};
+		
+
 })
 .factory('showDialog', function($compile, dictionary)
 {
@@ -863,14 +877,14 @@ angular.module('Tools', [])
 		{
 			dictionary.loader.then(function()
 			{
-				element.html(dictionary.get(attributes.dicText, attributes.dicIndex));
+				$element.html(dictionary.get($attributes.dicText, $attributes.dicIndex));
 			});
 
 			$scope.$on(
 				'dictionary-setLanguage',
 				function()
 				{
-					element.html(dictionary.get(attributes.dicText, attributes.dicIndex));
+					$element.html(dictionary.get($attributes.dicText, $attributes.dicIndex));
 				}
 			);
 		}
@@ -884,14 +898,14 @@ angular.module('Tools', [])
 		{
 			dictionary.loader.then(function()
 			{
-				element.attr('title', dictionary.get(attributes.dicTitle, attributes.dicIndex));
+				$element.attr('title', dictionary.get($attributes.dicTitle, $attributes.dicIndex));
 			});
 
 			$scope.$on(
 				'dictionary-setLanguage',
 				function()
 				{
-					element.attr('title', dictionary.get(attributes.dicText, attributes.dicIndex));
+					$element.attr('title', dictionary.get($attributes.dicText, $attributes.dicIndex));
 				}
 			);
 		}

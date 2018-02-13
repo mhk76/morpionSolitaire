@@ -62,10 +62,22 @@ module.exports = (serverManager) =>
 				try
 				{
 					let url = $path.parse(request.url);
-					let file =
-						serverManager.config.web.root
-						+ url.dir.appendTrail('/')
-						+ (url.base || serverManager.config.web.defaultFile);
+					let file;
+
+					if (request.url === '/serviceManagerAngularTools.js')
+					{
+						file = './serviceManagerAngularTools.js';
+					}
+					else if (request.url === '/serviceManagerDialog.css')
+					{
+						file = './serviceManagerDialog.css';
+					}
+					else
+					{
+						file = serverManager.config.web.root
+							+ url.dir.appendTrail('/')
+							+ (url.base || serverManager.config.web.defaultFile);
+					}
 
 					$fs.access(file, $fs.R_OK, (err) =>
 					{
@@ -226,7 +238,7 @@ module.exports = (serverManager) =>
 						let appRequest = {
 							action: json.actions.map((item) =>
 								{
-									return item.action;
+									return item.command;
 								}).join(' '),
 							inputDataLength: inputData.length,
 							outputDataLength: outputData.length,

@@ -1,6 +1,6 @@
 'use strict';
 
-angular.module('MorpionSolitaire', ['Tools'])
+angular.module('MorpionSolitaire', ['ServiceManagerAngularTools'])
 .controller('GameController', function($scope, $q, $timeout, $window, dictionary, dialog, server)
 {
 	const __boardSize = 30;
@@ -79,9 +79,6 @@ angular.module('MorpionSolitaire', ['Tools'])
 			angular.extend($scope.data, data);
 			showHighscores();
 			drawGrid();
-		});
-		server.fetch('init').then(function(data)
-		{
 		});
 	}); // $q.all().then()
 

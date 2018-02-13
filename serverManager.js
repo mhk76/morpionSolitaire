@@ -52,6 +52,22 @@ module.exports = (config) =>
 			{
 				setCacheInterval();
 			}
+			if (state === $stateLog)
+			{
+				_serverManager.webServer = new require('./webServer.js')(_serverManager);
+
+				_serverManager.webServer.loading
+					.success(() =>
+					{
+						if (_serverManager.config.web.webSockets)
+						{
+							_serverManager.webSocket = new require('./webSocket.js')(_serverManager);
+						}
+			
+						_starting.resolve($stateWebServer);
+					});
+			}
+
 			if (_startState === $stateLoaded)
 			{
 				_app.start(_serverManager);
@@ -75,7 +91,7 @@ module.exports = (config) =>
 						protocol  : String,
 						status    : String,
 						duration  : Number,
-						url       : String,
+						action    : String,
 						method    : String,
 						ip        : String,
 						input     : Number,
@@ -131,16 +147,17 @@ module.exports = (config) =>
 					_serverManager.mysql.verifyTable(
 							'log',
 							{
-								'log_id'   : 'BIGINT NOT NULL AUTO_INCREMENT',
-								'protocol' : 'VARCHAR(20) NULL',
-								'status'   : 'VARCHAR(50) NULL',
-								'duration' : 'INT NULL',
-								'url'      : 'VARCHAR(255) NULL',
-								'method'   : 'VARCHAR(50) NULL',
-								'ip'       : 'VARCHAR(40) NULL',
-								'input'    : 'INT NULL',
-								'output'   : 'INT NULL',
-								'error'    : 'MEDIUMTEXT NULL'
+								'log_id'    : 'BIGINT NOT NULL AUTO_INCREMENT',
+								'timestamp' : 'TIMESTAMP',
+								'protocol'  : 'VARCHAR(20) NULL',
+								'status'    : 'VARCHAR(50) NULL',
+								'duration'  : 'INT NULL',
+								'action'    : 'VARCHAR(255) NULL',
+								'method'    : 'VARCHAR(50) NULL',
+								'ip'        : 'VARCHAR(40) NULL',
+								'input'     : 'INT NULL',
+								'output'    : 'INT NULL',
+								'error'     : 'MEDIUMTEXT NULL'
 							},
 							['log_id']
 						)
@@ -152,7 +169,7 @@ module.exports = (config) =>
 						.fail((error) =>
 						{
 							console.log('ServerManager - MySql log database structure verification failed:');
-							console.log(error);
+							console.log('- ' + error);
 							process.exit();
 						});
 				}
@@ -166,7 +183,7 @@ module.exports = (config) =>
 				setTimeout(() =>
 				{
 					console.log('ServerManager - MySql connection failed:');
-					console.log(error);
+					console.log('- ' + error);
 					process.exit();
 				});
 			});
@@ -184,6 +201,35 @@ module.exports = (config) =>
 	if (_serverManager.config.cache.format === 'file')
 	{
 		initCache();
+	}
+
+	if (_serverManager.config.watchModules)
+	{
+		let restartTimer = null;
+		let modules = [_serverManager.config.app.file];
+
+		if (_app.subModules)
+		{
+			modules = modules.concat(_app.subModules);
+		}
+
+		modules.forEach((item) =>
+		{
+			$fs.watch(item, { persistent: true }, () =>
+			{
+				if (restartTimer === null)
+				{
+					clearTimeout(restartTimer);
+				}
+				restartTimer = setTimeout(() =>
+					{
+						_serverManager.restartApp();
+						restartTimer = null;
+					},
+					100
+				);
+			});
+		});
 	}
 
 	_serverManager.initCache = (section, defaultData) =>
@@ -323,51 +369,7 @@ module.exports = (config) =>
 		{
 			_serverManager.webSocket.setListener(callback);
 		}
-	}
-
-
-	if (_serverManager.config.watchModules)
-	{
-		let restartTimer = null;
-		let modules = [_serverManager.config.app.file];
-
-		if (_app.subModules)
-		{
-			modules = modules.concat(_app.subModules);
-		}
-
-		modules.forEach((item) =>
-		{
-			$fs.watch(item, { persistent: true }, () =>
-			{
-				if (restartTimer === null)
-				{
-					clearTimeout(restartTimer);
-				}
-				restartTimer = setTimeout(() =>
-					{
-						_serverManager.restartApp();
-						restartTimer = null;
-					},
-					100
-				);
-			});
-		});
-	}
-
-
-	_serverManager.webServer = new require('./webServer.js')(_serverManager);
-
-	_serverManager.webServer.loading
-		.success(() =>
-		{
-			if (_serverManager.config.web.webSockets)
-			{
-				_serverManager.webSocket = new require('./webSocket.js')(_serverManager);
-			}
-
-			_starting.resolve($stateWebServer);
-		});
+	};
 
 
 	function initCache()
@@ -409,14 +411,14 @@ module.exports = (config) =>
 						.fail((error) =>
 						{
 							console.log('ServerManager - Unabled to read MySql cache:');
-							console.log(error);
+							console.log('- ' + error);
 							process.exit();
 						});
 				})
 				.fail((error) =>
 				{
 					console.log('ServerManager - Failed to initialize MySql cache:');
-					console.log(error);
+					console.log('- ' + error);
 					process.exit();
 				});
 		}
@@ -499,7 +501,7 @@ module.exports = (config) =>
 				.fail((error) =>
 				{
 					console.log('ServerManager - Failed to save MySql cache:');
-					console.log(error);
+					console.log('- ' + error);
 				});
 
 				_altered = false;

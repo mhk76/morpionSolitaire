@@ -10,11 +10,11 @@ module.exports = (config) =>
 	try
 	{
 		_connection = $mysql.createConnection(config);
-		_connection.connect((error) =>
+		_connection.connect((err) =>
 			{
-				if (error)
+				if (err)
 				{
-					_module.starting.reject(error.sqlMessage);
+					_module.starting.reject(err.sqlMessage);
 					return;
 				}
 				_module.starting.resolve();
@@ -39,11 +39,11 @@ module.exports = (config) =>
 				_connection.query(
 					sql,
 					parameters,
-					(error, result, fields) =>
+					(err, result, fields) =>
 					{
-						if (error)
+						if (err)
 						{
-							promise.reject(error.sqlMessage);
+							promise.reject(err.sqlMessage);
 							return;
 						}
 						promise.resolve({
@@ -98,9 +98,9 @@ module.exports = (config) =>
 							{
 								promise.resolve();
 							})
-							.fail((error) =>
+							.fail((err) =>
 							{
-								promise.reject(error);
+								promise.reject(err);
 							});
 
 						return;
@@ -120,9 +120,9 @@ module.exports = (config) =>
 
 					promise.resolve();
 				})
-				.fail((error) =>
+				.fail((err) =>
 				{
-					promise.reject(error);
+					promise.reject(err);
 				});
 
 			return promise;
