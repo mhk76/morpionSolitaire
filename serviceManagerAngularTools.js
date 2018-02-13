@@ -465,7 +465,9 @@ angular.module('ServiceManagerAngularTools', [])
 	var _sendBuffer = [];
 	var _sendDeferreds = {};
 
-	_service.options = {};
+	_service.options = {
+		httpDelay: 10
+	};
 
 	_service.start = function(options)
 	{
@@ -585,7 +587,7 @@ angular.module('ServiceManagerAngularTools', [])
 
 				_sendBuffer = [];
 			},
-			10
+			_service.options.httpDelay || 10
 		);
 		
 		return deferred.promise;
