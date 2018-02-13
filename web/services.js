@@ -433,9 +433,9 @@ angular.module('Tools', [])
 		}
 	};
 
-	this.write = function(name, value)
+	this.write = function(name, value, age)
 	{
-		document.cookie = escape(name) + '=' + escape(value) + '; max-age=' + (86400 * 365 * 10);
+		document.cookie = escape(name) + '=' + escape(value) + (age ? '; max-age=' + age : '');
 	}
 
 	this.delete = function(name)
@@ -443,17 +443,27 @@ angular.module('Tools', [])
 		document.cookie = escape(name) + '=; max-age=-1';
 	}
 })
-.service('http', function($http, $q, cookie, dialog)
+.service('http', function($http, $q, $timeout, cookie, dialog)
 {
 	var _service = this;
 	var _buffer = {};
+	var _sendTimer = null;
+	var _sendBuffer = [];
+	var _sendDeferreds = {};
+
+	_service.options = {};
+
+	_service.start = function(options)
+	{
+		_service.options = options;
+	};
 
 	_service.fetch = function(action, parameters)
 	{
+		var deferred = $q.defer();
+
 		if (_buffer[action] && angular.equals(parameters, _buffer[action].parameters))
 		{
-			var deferred = $q.defer();
-
 			deferred.resolve(_buffer[action].response);
 
 			if (!_buffer[action].isPermanent)
@@ -464,13 +474,11 @@ angular.module('Tools', [])
 			return deferred.promise;
 		}
 
-		var deferred = $q.defer();
-		var message = {
-			action: action
-		};
-
+		var requestId = new Date().getTime() + Math.random();
 		var userId;
 
+		_sendDeferreds[requestId] = deferred;
+		
 		if (localStorage && localStorage.getItem)
 		{
 			userId = localStorage.userId;
@@ -479,63 +487,105 @@ angular.module('Tools', [])
 		{
 			userId = cookie.read('userId');
 		}
-		if (userId)
-		{
-			message.userId = userId;
-		}
+
+		var message = {
+			requestId: requestId,
+			command: action
+		};
 
 		if (parameters)
 		{
 			message.parameters = parameters;
 		}
 
-		$http({
-			method: 'POST',
-			url: '/',
-			data: message			
-		})
-		.then(
-			function(response)
+		_sendBuffer.push(message);
+
+		if (_sendTimer)
+		{
+			$timeout.cancel(_sendTimer);
+		}
+		_sendTimer = $timeout(
+			function()
 			{
-				var responseData = response.data;
+				$timeout.cancel(_sendTimer);
+				_sendTimer = null;
 
-				if (responseData.status === 'error') 
+				var sendData = {
+					actions: _sendBuffer
+				};
+
+				if (userId)
 				{
-					dialog.ok(responseData.data);
-					deferred.reject(responseData.data);
-					return;
+					sendData.userId = userId;
 				}
+						
+				$http({
+					method: 'POST',
+					url: '/',
+					data: sendData
+				})
+				.then(
+					function(responseObject)
+					{
+						var responseData = responseObject.data;
 
-				_buffer = angular.extend(_buffer, responseData.buffer);
+						if (responseData.userId)
+						{
+							if (_service.options.permanentId && localStorage && localStorage.setItem)
+							{
+								localStorage.setItem('userId', responseData.userId);
+							}
+							else if (sessionStorage && sessionStorage.setItem)
+							{
+								sessionStorage.setItem('userId', responseData.userId);
+							}
+							else
+							{
+								cookie.write('userId', responseData.userId, _service.options.permanentId && (86400 * 365 * 10));
+							}
+						}
 
-				if (localStorage && localStorage.setItem)
-				{
-					localStorage.setItem('userId', responseData.userId);
-				}
-				else
-				{
-					cookie.write('userId', responseData.userId);
-				}
+						_buffer = angular.extend(_buffer, responseData.buffer);
+						
+						for (var r in responseData.responses)
+						{
+							var response = responseData.responses[r];
 
-				deferred.resolve(responseData.data);
+							if (response.status === 'error') 
+							{
+								dialog.ok(response.data);
+								deferred.reject(response.data);
+								return;
+							}
+			
+							_sendDeferreds[response.requestId].resolve(response.data);
+							delete _sendDeferreds[response.requestId];
+						}
+					},
+					function(response, r)
+					{
+						dialog.ok(response.statusText);
+						deferred.reject(response.statusText);
+					}
+				); // $http.then()
+
+				_sendBuffer = [];
 			},
-			function(response, r)
-			{
-				dialog.ok(response.statusText);
-				deferred.reject(response.statusText);
-			}
+			10
 		);
-
+		
 		return deferred.promise;
-	};
+	}; // fetch()
 })
 .service('webSocket', function($q, cookie, dialog)
 {
 	var _service = this;
 	var _loader = $q.defer();
 
+	_service.options = {};
 	_service.loader = _loader.promise;
-	_service.onconnect = null;
+	_service.onConnect = null;
+	_service.onDisconnect = null;
 	_service.supported = !!WebSocket;
 
 	if (!_service.supported)
@@ -550,83 +600,85 @@ angular.module('Tools', [])
 	var _buffer = {};
 	var _protocol = (location.protocol === 'https' ? 'wss://' : 'ws://');
 
-	function connect()
+	function Connect()
 	{
-		_webSocket = new WebSocket(_protocol + location.host);
-	}
+		var webSocket = new WebSocket(_protocol + location.host);
 
-	// Catch if server does not support WebSockets
-	try
-	{
-		connect();
-	}
-	catch (err)
-	{
-		_service.supported = false;
-		_loader.resolve();
-		return;
-	}
-
-	_webSocket.onmessage = function(messageEvent)
-	{
-		try
+		webSocket.onmessage = function(messageEvent)
 		{
-			var response = JSON.parse(messageEvent.data);
-			var deferred = _requests[response.requestId];
-
-			if (response.status === 'error') 
+			try
 			{
-				dialog.ok(response.data);
-				deferred.reject(response.data);
-				return;
-			}
+				var responseData = JSON.parse(messageEvent.data);
+				var deferred = _requests[response.requestId];
 
-			_buffer = angular.extend(_buffer, response.buffer);
-
-			if (localStorage && localStorage.setItem)
-			{
-				localStorage.setItem('userId', response.userId);
-			}
-			else
-			{
-				cookie.write('userId', response.userId);
-			}
-
-			for (var key in _listeners)
-			{
-				if (key === response.requestId)
+				if (responseData.status === 'error') 
 				{
-					_listeners[key](response.data);
+					dialog.ok(responseData.data);
+					deferred.reject(responseData.data);
 					return;
 				}
-			}
 
-			deferred.resolve(response.data);
-		}
-		catch (err)
+				_buffer = angular.extend(_buffer, responseData.buffer);
+
+				if (responseData.userId)
+				{
+					if (_service.options.permanentId && localStorage && localStorage.setItem)
+					{
+						localStorage.setItem('userId', responseData.userId);
+					}
+					else if (sessionStorage && sessionStorage.setItem)
+					{
+						sessionStorage.setItem('userId', responseData.userId);
+					}
+					else
+					{
+						cookie.write('userId', responseData.userId, _service.options.permanentId && (86400 * 365 * 10));
+					}
+				}
+
+				for (var key in _listeners)
+				{
+					if (key === responseData.requestId)
+					{
+						_listeners[key](responseData.data);
+						return;
+					}
+				}
+
+				deferred.resolve(responseData.data);
+			}
+			catch (err)
+			{
+				console.log(err);
+				dialog.ok('unknown-error');
+			}
+		};
+
+		webSocket.onopen = function()
 		{
-			console.log(err);
-			dialog.ok('unknown-error');
-		}
+			if (_service.onConnect)
+			{
+				_service.onConnect();
+			}
+			_loader.resolve();
+		};
+
+		webSocket.onclose = function()
+		{
+			if (_service.onDisconnect && _service.onDisconnect())
+			{
+				_webSocket = new Connect();
+			}
+		};
+
+		return webSocket;
 	};
 
-	_webSocket.onopen = function()
+	_service.start = function(options)
 	{
-		if (_service.onconnect)
-		{
-			_service.onconnect(true);
-		}
-		_service.supported = true;
-		_loader.resolve();
-	}
-
-	_webSocket.onclose = function()
-	{
-		if (_service.onconnect)
-		{
-			_service.onconnect(false);
-		}
-		connect();
+		_service.options = options;
+		_webSocket = new Connect();
+		return _service.loader;
 	}
 
 	_service.addListener = function(key, callback)
@@ -650,8 +702,8 @@ angular.module('Tools', [])
 			return deferred.promise;
 		}
 
-		var message = {
-			requestId: Math.random().toString().substr(2),
+		var sendData = {
+			requestId: new Date().getTime() + Math.random(),
 			action: action
 		};
 
@@ -661,25 +713,29 @@ angular.module('Tools', [])
 		{
 			userId = localStorage.userId;
 		}
+		else if (sessionlStorage && sessionlStorage.getItem)
+		{
+			userId = sessionlStorage.userId;
+		}
 		else
 		{
 			userId = cookie.read('userId');
 		}
 		if (userId)
 		{
-			message.userId = userId;
+			sendData.userId = userId;
 		}
 
 		if (parameters)
 		{
-			message.parameters = parameters;
+			sendData.parameters = parameters;
 		}
 			
-		var deferred = _requests[message.requestId] = $q.defer();		
+		var deferred = _requests[sendData.requestId] = $q.defer();		
 
 		if (_webSocket.readyState === 1)
 		{
-			_webSocket.send(JSON.stringify(message));
+			_webSocket.send(JSON.stringify(sendData));
 		}
 		else
 		{
@@ -697,27 +753,39 @@ angular.module('Tools', [])
 
 	_service.loader = _loader.promise;
 
-	$q.all([
-		http.loader,
-		webSocket.loader
-	])
-	.then(function()
+	_service.start = function(options)
 	{
-		_loader.resolve();
+		var services = [];
 
-		if (webSocket.supported)
+		options.webSocket = options.webSocket && webSocket.supported;
+
+		http.start(options);
+
+		if (options.webSocket)
 		{
-			_service.fetch = webSocket.fetch;
-			_service.addListener = webSocket.addListener();
-			_service.usingWebSocket = true;
+			services.push(webSocket.start(options));
 		}
-		else
+
+		$q.all(services).then(function()
 		{
-			_service.fetch = http.fetch;
-			_service.addListener = function() { };
-			_service.usingWebSocket = false;
-		}
-	});
+			if (options.webSocket)
+			{
+				_service.fetch = webSocket.fetch;
+				_service.addListener = webSocket.addListener();
+				_service.usingWebSocket = true;
+				_service.onConnect = options.onConnect;
+				_service.onDisonnect = options.onDisconnect;
+			}
+			else
+			{
+				_service.fetch = http.fetch;
+				_service.addListener = function() { };
+				_service.usingWebSocket = false;
+			}
+
+			_loader.resolve();
+		});
+	};
 
 	_service.readStore = function(name, defaultValue)
 	{
@@ -745,16 +813,20 @@ angular.module('Tools', [])
 		}
 	};
 
-	_service.writeStore = function(name, data)
+	_service.writeStore = function(name, data, isPermanent)
 	{
-		if (localStorage && localStorage.setItem)
+		if (isPermanent && localStorage && localStorage.setItem)
 		{
 			localStorage.setItem(name, JSON.stringify(data));
+			return;
 		}
-		else
+		if (sessionStorage && sessionStorage.setItem)
 		{
-			cookie.write(name, JSON.stringify(data));
+			sessionStorage.setItem(name, JSON.stringify(data));
+			return;
 		}
+
+		cookie.write(name, JSON.stringify(data), isPermanent);
 	};
 
 	_service.deleteStore = function(name)
@@ -787,7 +859,7 @@ angular.module('Tools', [])
 {
 	return {
 		restrict: 'A',
-		link: function($scope, element, attributes)
+		link: function($scope, $element, $attributes)
 		{
 			dictionary.loader.then(function()
 			{
@@ -808,7 +880,7 @@ angular.module('Tools', [])
 {
 	return {
 		restrict: 'A',
-		link: function($scope, element, attributes)
+		link: function($scope, $element, $attributes)
 		{
 			dictionary.loader.then(function()
 			{

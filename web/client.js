@@ -59,9 +59,10 @@ angular.module('MorpionSolitaire', ['Tools'])
 
 	$q.all([
 		dictionary.loader,
-		server.loader
+		server.start({ webService: false })
 	]).then(function()
 	{
+
 		$scope.data.languageList = dictionary.getLanguages();
 		$scope.data.lang = server.readStore('lang');
 		if ($scope.data.lang)
@@ -78,6 +79,9 @@ angular.module('MorpionSolitaire', ['Tools'])
 			angular.extend($scope.data, data);
 			showHighscores();
 			drawGrid();
+		});
+		server.fetch('init').then(function(data)
+		{
 		});
 	}); // $q.all().then()
 
@@ -103,7 +107,6 @@ angular.module('MorpionSolitaire', ['Tools'])
 
 			drawGrid();
 		})
-
 		.on('mousedown', function(event)
 		{
 			if (event.button === 0)
@@ -336,7 +339,7 @@ angular.module('MorpionSolitaire', ['Tools'])
 	$scope.setLanguage = function(lang)
 	{
 		dictionary.setLang(lang);
-		server.writeStore('lang', lang);
+		server.writeStore('lang', lang, true);
 		$scope.data.lang = lang;
 	}
 

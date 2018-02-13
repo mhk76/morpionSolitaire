@@ -2,26 +2,8 @@ module.exports = function Promise()
 {
 	let promise = this;
 
-	promise.resolved = false
+	promise.resolved = false;
 	promise.failed = false;
-
-	promise.then = (successCallback, failCallback) =>
-	{
-		promise.successCallback = successCallback;
-		promise.failCallback = failCallback;
-
-		if (promise.failed)
-		{
-			failCallback(promise.error);
-			return promise;
-		}
-		if (promise.resolved)
-		{
-			successCallback(promise.result);
-		}
-
-		return promise;
-	};
 
 	promise.success = (callback) =>
 	{
@@ -89,7 +71,7 @@ module.exports = function Promise()
 	{
 		let all = {
 			count: list.length,
-			then: (callback) =>
+			done: (callback) =>
 			{
 				if (all.count === 0)
 				{

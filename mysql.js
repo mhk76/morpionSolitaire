@@ -1,16 +1,16 @@
 const $mysql = require('mysql');
 const $sqlstring = require('sqlstring');
-const Promise = require('./promise.js');
+const $Promise = require('./promise.js');
 
-module.exports = function(config)
+module.exports = (config) =>
 {
 	let _connection
-	let _module = { starting: new Promise() };
+	let _module = { starting: new $Promise() };
 
 	try
 	{
 		_connection = $mysql.createConnection(config);
-		_connection.connect(function(error)
+		_connection.connect((error) =>
 			{
 				if (error)
 				{
@@ -25,20 +25,21 @@ module.exports = function(config)
 		_module.starting.reject(exception);
 	}
 	
-	_module.query = function(sql, parameters)
+	_module.query = (sql, parameters) =>
 		{
-			let promise = new Promise();
+			let promise = new $Promise();
 
 			for (let p in parameters)
 			{
 				sql = sql.replace('@' + p, $sqlstring.escape(parameters[p]));
 			}
 
-			setTimeout(function() {
+			setTimeout(() =>
+			{
 				_connection.query(
 					sql,
 					parameters,
-					function(error, result, fields)
+					(error, result, fields) =>
 					{
 						if (error)
 						{
@@ -56,15 +57,15 @@ module.exports = function(config)
 			return promise;
 		};
 
-	_module.verifyTable = function(name, columns, primaryKey)
+	_module.verifyTable = (name, columns, primaryKey) =>
 		{
-			let promise = new Promise();
+			let promise = new $Promise();
 
 			_module.query(
 					'SELECT column_name FROM information_schema.columns WHERE table_name = @name;',
 					{ 'name': name }
 				)
-				.success(function(data)
+				.success((data) =>
 				{
 					if (data.result.length === 0)
 					{
@@ -82,7 +83,7 @@ module.exports = function(config)
 						{
 							sql.push(
 								', PRIMARY KEY (',
-								primaryKey.map(function(item)
+								primaryKey.map((item) =>
 								{
 									return '`' + item + '`';
 								}),
@@ -93,11 +94,11 @@ module.exports = function(config)
 						sql.push(');');
 
 						_module.query(sql.join(''))
-							.success(function(data)
+							.success((data) =>
 							{
 								promise.resolve();
 							})
-							.fail(function(error)
+							.fail((error) =>
 							{
 								promise.reject(error);
 							});
@@ -107,7 +108,7 @@ module.exports = function(config)
 
 					for (let c in columns)
 					{
-						if (!data.result.some(function(item)
+						if (!data.result.some((item) =>
 						{
 							return item.column_name === c;
 						}))
@@ -119,7 +120,7 @@ module.exports = function(config)
 
 					promise.resolve();
 				})
-				.fail(function(error)
+				.fail((error) =>
 				{
 					promise.reject(error);
 				});
@@ -127,21 +128,21 @@ module.exports = function(config)
 			return promise;
 		};
 
-	_module.insert = function (tableName, data)
+	_module.insert = (tableName, data) =>
 		{
 			return _module.query(
 				generateInsertSql('INSERT INTO ', tableName, data)
 			);
 		};
 
-	_module.replace = function (tableName, data)
+	_module.replace = (tableName, data) =>
 		{
 			return _module.query(
 				generateInsertSql('REPLACE INTO ', tableName, data)
 			);
 		};
 
-	_module.encode = function(data)
+	_module.encode = (data) =>
 		{
 			return $sqlstring.escape(data);
 		};

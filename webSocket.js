@@ -2,20 +2,20 @@ const $ws = require('ws');
 
 const Uuidv1 = require('uuid/v1');
 
-module.exports = function(serverManager)
+module.exports = (serverManager) =>
 {
 	let _webSockets = {};
-	let _listener = function(request)
+	let _listener = (request) =>
 		{
 			console.log('default webSocket listener', request);
 			request.response({}, 'ok');
 		};
 
 	(new $ws.Server({ server: serverManager.webServer }))
-		.on('connection', function(webSocket)
+		.on('connection', (webSocket) =>
 		{
 			webSocket
-				.on('message', function(message)
+				.on('message', (message) =>
 				{
 					let startTime = new Date().getTime();
 					let appRequest;
@@ -35,7 +35,7 @@ module.exports = function(serverManager)
 							{
 								remoteAddress: webSocket && webSocket._socket && webSocket._socket.remoteAddress
 							},
-							buffer: function(action, parameters, response, isPermanent)
+							buffer: (action, parameters, response, isPermanent) =>
 							{
 								buffer[action] = {
 									parameters: parameters || {},
@@ -43,7 +43,7 @@ module.exports = function(serverManager)
 									isPermanent: isPermanent || false
 								};
 							},
-							response: function(data, status)
+							response: (data, status) =>
 							{
 								let outputData = JSON.stringify({
 									requestId: appRequest.requestId,									
@@ -63,7 +63,7 @@ module.exports = function(serverManager)
 
 								webSocket.send(outputData);
 							},
-							terminate: function()
+							terminate: () =>
 							{
 								serverManager.writeLog('$ws', 'terminate-force', appRequest, startTime);
 								webSocket.terminate();
@@ -114,12 +114,12 @@ module.exports = function(serverManager)
 						webSocket: webSocket
 					};
 
-					setTimeout(function()
+					setTimeout(() =>
 					{
 						_listener(appRequest);
 					});
 				})
-				.on('close', function()
+				.on('close', () =>
 				{
 					if (webSocket.userId)
 					{
@@ -131,15 +131,15 @@ module.exports = function(serverManager)
 	console.log('WebSocket - attached to WebServer');	
 
 	return {
-		setListener: function(callback)
+		setListener: (callback) =>
 		{
 			_listener = callback;
 		},
-		setUserTarget: function(userId, target)
+		setUserTarget: (userId, target) =>
 		{
 			_webSockets[userId].target = target;
 		},
-		broadcast: function(target, dataType, data)
+		broadcast: (target, dataType, data) =>
 		{
 			for (let userId in _webSockets)
 			{

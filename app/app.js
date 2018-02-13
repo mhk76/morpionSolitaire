@@ -51,7 +51,7 @@ let _highscores = [{
 		      + 'lnln6mmlh7nmnm3nnnn1mnmn1onon3lplp1okpj6mpmp3nqnq0hshs2pkin7qkqk3olpk6omoi7mofq5plqk6dpdp1'
 	}];
 
-exports.init = function(serverManager)
+exports.start = function(serverManager)
 {
 	_serverManager = serverManager;
 	_serverManager.setListener(listener);	

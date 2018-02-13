@@ -1,14 +1,14 @@
 const $fs = require('fs');
-
-const Promise = require('./promise.js');
+const $Promise = require('./promise.js');
 
 require('./prototypes.js');
 
 const $stateInitial = 0x00;
 const $stateData = 0x01;
 const $stateCache = 0x02;
-const $stateWebServer = 0x04;
-const $stateLoaded = 0x07;
+const $stateLog = 0x04;
+const $stateWebServer = 0x08;
+const $stateLoaded = 0x0f;
 
 module.exports = (config) =>
 {
@@ -16,6 +16,7 @@ module.exports = (config) =>
 	let _cache = {};
 	let _altered = true;
 	let _startState = $stateInitial;
+	let _mongoose;
 
 	_serverManager.config = config || {};
 
@@ -29,7 +30,8 @@ module.exports = (config) =>
 	_serverManager.config.web.protocol = _serverManager.config.web.protocol || 'http';
 	_serverManager.config.web.port = _serverManager.config.web.port || 80;
 	_serverManager.config.web.postBlockLimit = _serverManager.config.web.postBlockLimit || 1e5;
-	_serverManager.config.web.webSockets = (_serverManager.config.web.webSockets == true);
+	_serverManager.config.web.disablePost = (_serverManager.config.web.disablePost == true);
+	_serverManager.config.web.webSockets = (_serverManager.config.web.webSockets == true) || _serverManager.config.web.disablePost;
 
 	_serverManager.config.cache = _serverManager.config.cache || {}
 	_serverManager.config.cache.format = _serverManager.config.cache.format || 'file';
@@ -41,66 +43,123 @@ module.exports = (config) =>
 	_serverManager.config.log.path = (_serverManager.config.log.path || './log/').appendTrail('/');
 
 	let _app = require(_serverManager.config.app.file);
-	let _starting = new Promise()
+	let _starting = new $Promise()
 		.success((state) =>
 		{
 			_startState |= state;
 
-			if (state === $stateData)
-			{
-				initCache();
-			}
 			if (state === $stateCache && _serverManager.config.cache.interval != null)
 			{
 				setCacheInterval();
 			}
 			if (_startState === $stateLoaded)
 			{
-				_app.init(_serverManager);
+				_app.start(_serverManager);
 				console.log('ServerManager - App started');
 			}
 		});
 
-	if (_serverManager.config.log.format === 'mongoose' || _serverManager.config.cache.format === 'mongoose' || _serverManager.config.app.database === 'mongoose')
+	if (_serverManager.config.log.format === 'mongoose'
+		|| _serverManager.config.cache.format === 'mongoose'
+		|| _serverManager.config.app.database === 'mongoose'
+	)
 	{
-		// TODO: mongoose
-		_starting.resolve($stateData);
+		_serverManager.mongoose = require('mongoose');
+		_serverManager.mongoose.connect(_serverManager.config.mongoose);
+		
+		_mongoose = {
+			log: _serverManager.mongoose.model(
+					'log',
+					_serverManager.mongoose.Schema({
+						logId     : _serverManager.mongoose.Schema.ObjectId,
+						protocol  : String,
+						status    : String,
+						duration  : Number,
+						url       : String,
+						method    : String,
+						ip        : String,
+						input     : Number,
+						output    : Number,
+						error     : String 
+					})
+				),
+			cache: _serverManager.mongoose.model(
+					'cache',
+					_serverManager.mongoose.Schema({
+						section   : String,
+						data      : Object
+					})
+				)
+		};
+		
+		_serverManager.mongoose.connection.once('open', () =>
+		{
+			console.log('Server - Mongoose connection opened');
+
+			if (_serverManager.config.app.database === 'mongoose')
+			{
+				_starting.resolve($stateData);
+			}
+			if (_serverManager.config.log.format === 'mongoose')
+			{
+				_starting.resolve($stateLog);
+			}
+			if (_serverManager.config.cache.format === 'mongoose')
+			{
+				initCache();
+			}
+		});
 	}
-	else if (_serverManager.config.log.format === 'mysql' || _serverManager.config.cache.format === 'mysql' || _serverManager.config.app.database === 'mysql')
+
+	if (_serverManager.config.log.format === 'mysql'
+		|| _serverManager.config.cache.format === 'mysql'
+		|| _serverManager.config.app.database === 'mysql'
+	)
 	{
 		_serverManager.mysql = require('./mysql.js')(_serverManager.config.mysql);
 		_serverManager.mysql.starting
 			.success(() =>
 			{
 				console.log('ServerManager - MySql connected');
-				
-				_serverManager.mysql.verifyTable(
-						'log',
+
+				if (_serverManager.config.app.database === 'mysql')
+				{
+					_starting.resolve($stateData);
+				}				
+				if (_serverManager.config.log.format === 'mysql')
+				{
+					_serverManager.mysql.verifyTable(
+							'log',
+							{
+								'log_id'   : 'BIGINT NOT NULL AUTO_INCREMENT',
+								'protocol' : 'VARCHAR(20) NULL',
+								'status'   : 'VARCHAR(50) NULL',
+								'duration' : 'INT NULL',
+								'url'      : 'VARCHAR(255) NULL',
+								'method'   : 'VARCHAR(50) NULL',
+								'ip'       : 'VARCHAR(40) NULL',
+								'input'    : 'INT NULL',
+								'output'   : 'INT NULL',
+								'error'    : 'MEDIUMTEXT NULL'
+							},
+							['log_id']
+						)
+						.success(() =>
 						{
-							'log_id'   : 'BIGINT NOT NULL AUTO_INCREMENT',
-							'protocol' : 'VARCHAR(20) NULL',
-							'status'   : 'VARCHAR(50) NULL',
-							'duration' : 'INT NULL',
-							'url'      : 'VARCHAR(255) NULL',
-							'method'   : 'VARCHAR(50) NULL',
-							'ip'       : 'VARCHAR(40) NULL',
-							'input'    : 'INT NULL',
-							'output'   : 'INT NULL',
-							'error'    : 'MEDIUMTEXT NULL'
-						},
-						['log_id']
-					)
-					.success(() =>
-					{
-						console.log('ServerManager - MySql database structure verified');
-						_starting.resolve($stateData);
-					})
-					.fail((error) =>
-					{
-						console.log('ServerManager - MySql database structure verification failed:');
-						console.log(error);
-						process.exit();
-					});
+							console.log('ServerManager - MySql log database initialised');
+							_starting.resolve($stateLog);
+						})
+						.fail((error) =>
+						{
+							console.log('ServerManager - MySql log database structure verification failed:');
+							console.log(error);
+							process.exit();
+						});
+				}
+				if (_serverManager.config.cache.format === 'mysql')
+				{
+					initCache();
+				}
 			})
 			.fail((error) =>
 			{
@@ -112,16 +171,26 @@ module.exports = (config) =>
 				});
 			});
 	}
-	else
+	
+	if (_serverManager.config.app.database !== 'mongoose' && _serverManager.config.app.database !== 'mysql')
 	{
 		_starting.resolve($stateData);
+	}
+	if (_serverManager.config.log.format === 'file')
+	{
+		console.log('ServerManager - Logging into files');
+		_starting.resolve($stateLog);
+	}
+	if (_serverManager.config.cache.format === 'file')
+	{
+		initCache();
 	}
 
 	_serverManager.initCache = (section, defaultData) =>
 	{
 		if (!section)
 		{
-			console.log('ServerManager - cache section was not defined');
+			console.log('ServerManager - Cache section was not defined');
 			process.exit();
 		}
 
@@ -244,7 +313,7 @@ module.exports = (config) =>
 		delete require.cache[require.resolve(_serverManager.config.app.file)];
 
 		_app = require(_serverManager.config.app.file);
-		_app.init(_serverManager);
+		_app.start(_serverManager);
 	};
 
 	_serverManager.setListener = (callback) =>
@@ -269,14 +338,13 @@ module.exports = (config) =>
 
 		modules.forEach((item) =>
 		{
-			$fs.watch(item, { persistent: true }, function()
+			$fs.watch(item, { persistent: true }, () =>
 			{
 				if (restartTimer === null)
 				{
 					clearTimeout(restartTimer);
 				}
-				restartTimer = setTimeout(
-					function()
+				restartTimer = setTimeout(() =>
 					{
 						_serverManager.restartApp();
 						restartTimer = null;
@@ -311,7 +379,7 @@ module.exports = (config) =>
 		}
 		else if (_serverManager.config.cache.format === 'mysql')
 		{
-			_serverManager.mysql.verifyTable(
+			let p =_serverManager.mysql.verifyTable(
 					'cache',
 					{
 						'section': 'VARCHAR(255) NOT NULL',
@@ -319,7 +387,7 @@ module.exports = (config) =>
 					},
 					['section']
 				)
-				.success(() =>
+			p.success(() =>
 				{
 					_serverManager.mysql.query(
 							'SELECT section, data FROM cache'
@@ -356,11 +424,13 @@ module.exports = (config) =>
 		{
 			_cache = JSON.parse($fs.readFileSync(_serverManager.config.cache.file, 'utf8'));
 			_starting.resolve($stateCache);
-			console.log('ServerManager - cache loaded');
+			console.log('ServerManager - File cache loaded');
 		}
 		else
 		{
+			_cache = {};
 			_starting.resolve($stateCache);
+			console.log('ServerManager - Using file cache');
 		}
 	} // initCache()
 
@@ -370,7 +440,7 @@ module.exports = (config) =>
 
 		if (_serverManager.config.cache.format === 'mongoose')
 		{
-			// TODO: mongoose
+			cacheFunction = saveCacheToMongoDB;
 		}
 		else if (_serverManager.config.cache.format === 'mysql')
 		{
@@ -387,6 +457,19 @@ module.exports = (config) =>
 		);
 	} // setCacheInterval()
 
+	function saveCacheToMongoDB()
+	{
+		if (_app.saveCache)
+		{
+			_app.saveCache();
+		}
+	
+		if (_altered)
+		{
+			// TODO: mongoose - write cache
+		}
+	} // function saveCacheToMongoDB()
+	
 	function saveCacheToMySql()
 	{
 		if (_app.saveCache)
@@ -399,13 +482,13 @@ module.exports = (config) =>
 			let sql = ['REPLACE LOW_PRIORITY INTO cache VALUES ']
 			let list = []
 
-			for (let c in _cache)
+			for (let section in _cache)
 			{
 				list.push([
 					'(\'',
-					c,
+					section,
 					'\', ',
-					_serverManager.mysql.encode(JSON.stringify(_cache[c].data)),
+					_serverManager.mysql.encode(JSON.stringify(_cache[section].data)),
 					')'
 				].join(''));
 			}

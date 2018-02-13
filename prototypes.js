@@ -29,9 +29,28 @@ Object.equals = function(object1, object2, softComparison)
 	{
 		return true;
 	}
+	if (object1 === null || object2 === null || object1 === undefined || object2 === undefined)
+	{
+		return false;
+	}
+
+	let type1 = typeof object1;
+
+	if (type1 !== typeof object2 || type1 === 'string' || type1 === 'number' || type1 === 'boolean')
+	{
+		return false;
+	}
+	if (object1 instanceof Date)
+	{
+		return +object1 === +object2;
+	}
+	if (object1 instanceof Function)
+	{
+		return false;
+	}
 
 	var keys = Object.keys(object1);
-
+	
 	if (!keys.equals(Object.keys(object2)))
 	{
 		return false;
@@ -75,8 +94,7 @@ Array.prototype.equals = function(array, deepComparison, softComparison)
 		return false;
 	}
 
-	return this.every(
-		function(value, index)
+	return this.every((value, index) =>
 		{
 			if (deepComparison && Array.isArray(value))
 			{
@@ -87,8 +105,7 @@ Array.prototype.equals = function(array, deepComparison, softComparison)
 				return value.equals(array[index], deepComparison, softComparison);
 			}
 			return Object.equals(value, array[index], softComparison);
-		}
-	);
+		});
 }
 Object.defineProperty(Array.prototype, "equals", { enumerable: false });
 
@@ -98,16 +115,12 @@ Array.prototype.intersect = function(array, softComparison)
 	{
 		return false;
 	}
-	this.some(
-		function(thisValue)
+	return this.some((thisValue) =>
 		{
-			return array.some(
-				function(arrayValue)
-				{
-					return Object.equals(thisValue, arrayValue, softComparison);
-				}
-			);
-		}
-	);
+			return array.some((arrayValue) =>
+			{
+				return Object.equals(thisValue, arrayValue, softComparison);
+			});
+		});
 }
 Object.defineProperty(Array.prototype, "intersect", { enumerable: false });
