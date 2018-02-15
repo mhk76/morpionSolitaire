@@ -11,7 +11,7 @@ require('servermanager')({
 		"port": 8000,
 		"httpsKeyFile": null,
 		"httpsCertFile": null,
-		"postBlockLimit": 1e5,
+		"messageSize": 1e5,
 		"webSockets": true,
 		"disablePost": false
 	},
