@@ -1,10 +1,10 @@
 {
 	"name": "morpion-solitaire",
-	"version": "1.1.0",
+	"version": "1.2.0",
 	"description": "Morpion solitaire game",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/mhk76/morpionSolitaire"
+		"url": "https://github.com/mhk76/morpionSolitaireServer"
 	},
 	"main": "server.js",
 	"scripts": {
