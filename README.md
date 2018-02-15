@@ -1,3 +1,3 @@
 # morpionSolitaireServer
 
-Morpion solitaire game, server application with Node.js
+Morpion solitaire game server with Node.js
