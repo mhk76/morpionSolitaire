@@ -11,11 +11,8 @@
 		"start": "node server.js"
 	},
 	"dependencies": {
-		"mongoose": "^4.13.5",
 		"mysql": "^2.15.0",
-		"sqlstring": "^2.3.0",
-		"uuid": "^3.1.0",
-		"ws": "^3.3.2"
+		"servermanager": "latest"
 	},
 	"author": "Mikko Karhunen <mikko.karhunen@iki.fi>",
 	"license": "MIT",

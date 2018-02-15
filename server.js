@@ -1,6 +1,6 @@
-require('./serverManager.js')({
+require('servermanager')({
 	"app": {
-		"file": "./app/app.js",
+		"file": "./app.js",
 		"watchModules": true,
 		"database": "mysql"
 	},
