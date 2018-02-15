@@ -1,3 +1,3 @@
 # morpionSolitaire
 
-https://morpion-solitaire.herokuapp.com/
+Morpion solitaire game as web application with Node.js and AngularJS
