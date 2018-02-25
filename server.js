@@ -1,7 +1,6 @@
 require('servermanager')({
 	"app": {
 		"file": "./app.js",
-		"watchModules": true,
 		"database": "mysql"
 	},
 	"web": {
@@ -9,11 +8,7 @@ require('servermanager')({
 		"defaultFile": "client.html",
 		"protocol": "http",
 		"port": 8000,
-		"httpsKeyFile": null,
-		"httpsCertFile": null,
-		"messageSize": 1e5,
-		"webSockets": true,
-		"disablePost": false
+		"webSockets": false
 	},
 	"mysql": {
 		"host": "localhost",
