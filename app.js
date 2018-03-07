@@ -28,12 +28,7 @@ const $highscoreLimit = 20;
 
 let _clone = function (data)
 	{
-		return new Cloner(data).clone;
-
-		function Cloner(data)
-		{
-			this.clone = data;
-		}
+		return JSON.parse(JSON.stringify(data))
 	};
 let _serverManager;
 let _highscores = [{
