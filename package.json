@@ -1,6 +1,6 @@
 {
 	"name": "morpion-solitaire",
-	"version": "1.2.2",
+	"version": "1.2.3",
 	"description": "Morpion solitaire game",
 	"repository": {
 		"type": "git",
@@ -12,7 +12,7 @@
 	},
 	"dependencies": {
 		"mysql": "^2.15.0",
-		"servermanager": "^1.0.11"
+		"servermanager": "^1.1.0"
 	},
 	"author": "Mikko Karhunen <mikko.karhunen@iki.fi>",
 	"license": "MIT",
