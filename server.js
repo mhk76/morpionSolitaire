@@ -1,5 +1,5 @@
 require('servermanager')({
-	"app": {
+	"server": {
 		"file": "./app.js",
 		"database": "mysql"
 	},
